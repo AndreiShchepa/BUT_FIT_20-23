@@ -1,0 +1,151 @@
+\documentclass[a4paper, 11pt, twocolumn]{article}
+
+\usepackage[czech]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[IL2]{fontenc}
+\usepackage{times}
+\usepackage[left=1.5cm, top=2.5cm, text={18cm, 25cm}]{geometry}
+\usepackage{amsthm, amssymb, amsmath}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definice}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Věta}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            \Huge\textsc{Fakulta informačních technologií\\
+            Vysoké učení technické v~Brně\\}
+            \vspace{\stretch{0.382}}
+            \LARGE
+            Typografie a publikování\,--\,2. projekt \\
+            Sazba dokumentů a matematických výrazů
+            \vspace{\stretch{0.618}}
+        \end{center}
+        {\Large 2021 \hfill Andrei Shchapaniak (xshcha00)}
+    \end{titlepage}
+
+    \section*{Úvod}
+
+    V této úloze si vyzkoušíme sazbu titulní strany, matematic\-kých vzorců,
+    prostředí a dalších textových struktur obvyklých pro technicky zaměřené texty (například rovnice (1) nebo Definice 1 na straně 1).
+    Rovněž si vyzkoušíme používání odkazů \verb;\ref; a \verb;\pageref;.
+
+    Na titulní straně je využito sázení nadpisu podle optického středu s využitím zlatého řezu.
+    Tento postup byl probírán na přednášce. Dále je použito odřádkování se zadanou relativní velikostí 0.4\,em a 0.3\,em.
+
+    V případě, že budete potřebovat vyjádřit matematickou
+    konstrukci nebo symbol a nebude se Vám dařit jej nalézt
+    v samotném \LaTeX u, doporučuji prostudovat možnosti balíku maker \AmS -\LaTeX.
+
+    \section{Matematický text}
+
+    Nejprve se podíváme na sázení matematických symbolů
+    a výrazů v plynulém textu včetně sazby definic a vět s využitím balíku \verb;amsthm;.
+    Rovněž použijeme poznámku pod čarou s použitím příkazu \verb;\footnote;.
+    Někdy je vhodné použít konstrukci \verb;\mbox{};, která říká, že text nemá být zalomen.
+
+    \begin{definition}\label{def1}
+        Rozšířený zásobníkový automat \textit{(RZA) je definován jako sedmice tvaru
+            $A = (Q, \Sigma, \Gamma, \delta, q_{0}, Z_{0},F)$, kde:}
+            \begin{itemize}
+            \item \textit{$Q$ je konečná množina} vnitřních (řídicích) stavů\emph{,}
+            \item \textit{$\Sigma$ je konečná} vstupní abeceda\emph{,}
+            \item \textit{$\Gamma$ je konečná} zásobníková abeceda\emph{,}
+            \item \textit{$\delta$ je} přechodová funkce $Q\times(\Sigma\cup\{\epsilon\})\times\Gamma^{*}\to2^{Q\times\Gamma^{*}}$\emph{,}
+            \item \textit{$q_{0} \in Q$ je} počáteční stav, $Z_{0} \in \Gamma$ \textit{je} startovací symbol zásobníku a $F \subseteq Q$ \textit{je množina} koncových stavů.
+        \end{itemize}
+    \end{definition}
+
+    Nechť $P = (Q, \Sigma, \Gamma, \delta, q_{0}, Z_{0},F)$ je rozšířený zásobníkový automat.
+    \textit{Konfigurací} nazveme trojici $(q,w,\alpha)\in Q\times\Sigma^{*}\times\Gamma^{*}$, kde $q$ je aktuální stav vnitřního řízení,
+    $w$ je dosud nezpracovaná část vstupního řetězce a $\alpha = Z_{i_{1}}Z_{i_{2}} \dots Z_{i_{k}}$
+    je obsah zásobníku\footnote{$Z_{i_{1}}$ je vrchol zásobníku}.
+
+    \subsection{Podsekce obsahující větu a odkaz}
+
+    \begin{definition}\label{def2}
+        Řetězec $w$ nad abecedou $\Sigma$ je přijat RZA \textit{A~jestliže $(q_{0},w,Z_{0})\overset{*}
+        {\underset{A}{\vdash}}(q_{F},\epsilon,\gamma)$ pro nějaké $\gamma\in\Gamma^{*}$ a
+        $q_{F}\in F$. Množinu $L(A) = \{w$ \,$|$\, $w$ je přijat RZA $A\}\subseteq$ $\Sigma^{*}$~nazýváme}~jazyk~přijímaný~RZA $A$.
+    \end{definition}
+
+    Nyní si vyzkoušíme sazbu vět a důkazů opět s~použitím
+    balíku \verb;amsthm;.
+
+    \begin{theorem}
+        Třída jazyků, které jsou přijímány ZA, odpovídá \textup{bezkontextovým jazykům.}
+    \end{theorem}
+    \begin{proof}
+        \textup{V důkaze vyjdeme z Definice \ref{def1} a \ref{def2}}.
+    \end{proof}
+
+    \section{Rovnice a odkazy}
+
+    Složitější matematické formulace sázíme mimo plynulý
+    text. Lze umístit několik výrazů na jeden řádek, ale pak je
+    třeba tyto vhodně oddělit, například příkazem \verb;\quad;.\\
+    $$
+        \sqrt[i]{x^3_i}\quad
+        \textrm{kde}\:x_i\:\textrm{je $i$-té sudé číslo splňující}
+        \quad
+        x_i^{x_i^{i^2}+2} \le y_i^{x_i^4}
+    $$
+
+    V rovnici (\ref{rovnice1}) jsou využity tři typy závorek s~různou explicitně definovanou velikostí.
+
+    \begin{eqnarray} \label{rovnice1}
+        x &=& \bigg[\Big\{ \big[a+b\big]*c \Big\}^{d} \oplus 2 \bigg]^{3/2}\\
+        y &=& \lim_{x\to\infty}\frac{\frac{1}{\log_{10}x}}{\sin^{2}{x} + \cos^{2}{x}} \nonumber
+    \end{eqnarray}
+
+    V této větě vidíme, jak vypadá implicitní vysázení limity $ \lim_{n\to\infty} f(n) $ v~normálním odstavci textu.
+    Podobně je to i s~dalšími symboly jako $ \prod_{i=1}^{n} 2^{i} $ či $ \bigcap_{A\in\mathcal{B}} A $.
+    V případě vzorců $ \lim\limits_{n\to\infty} f(n) $ a $ \prod\limits_{i=1}^{n} 2^{i} $ jsme si vynutili méně úspornou sazbu příkazem \verb;\limits;.
+
+    \begin{eqnarray}\label{rovnice2}
+        \int_{b}^{a} g(x)\,\textrm{d}x &=& - \int\limits_{a}^{b} f(x)\,\textrm{d}x
+    \end{eqnarray}
+
+    \section{Matice}
+
+    Pro sázení matic se velmi často používá prostředí \texttt{array} a závorky (\verb;\left;, \verb;\right;).
+	$$
+		\left(
+		\begin{array}{ccc}
+		    a-b & \widehat{\xi + \omega} & \pi\\
+            \Vec{\mathbf{a}} & \overleftrightarrow{AC} & \hat{\beta}
+		\end{array}
+		\right)
+		= 1 \iff \mathcal{Q} = \mathbb{R}
+	$$
+
+	$$
+		\mathbf{A} =
+		\left\|
+		\begin{array}{cccc}
+			a_{11} & a_{12} & \ldots & a_{1n} \\
+			a_{21} & a_{22} & \ldots & a_{2n} \\
+			\vdots & \vdots & \ddots & \vdots \\
+			a_{m1} & a_{m2} & \ldots & a_{mn}
+		\end{array}
+		\right\|
+		 =
+        \left\vert\begin{array}{cc}
+        t & u\\
+        v~& w
+        \end{array}\right\vert
+        = tw - uv
+	$$
+
+    Prostředí \texttt{array} lze úspěšně využít i jinde.
+    \begin{equation*}
+        \dbinom{n}{k}  = \Bigg\lbrace
+        \begin{array}{c l}
+            0 & \textrm{pro } k~< 0 \textrm{ nebo } k~> n \\
+            \frac{n!}{k!(n-k)!} & \textrm{pro } 0 \leq k \leq n.
+        \end{array}
+    \end{equation*}
+\end{document}

@@ -1,0 +1,51 @@
+\documentclass[a4paper, 11pt]{article}
+
+\usepackage[czech]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[left=2cm, top=3cm, text={17cm, 24cm}]{geometry}
+\usepackage{times}
+\usepackage[unicode]{hyperref}
+\hypersetup{colorlinks = true, hypertexnames = false}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            \Huge\textsc{Vysoké učení technické v~Brně} \\
+            \huge\textsc{Fakulta informačních technologií} \\
+            \vspace{\stretch{0.382}}
+            \LARGE{Typografie a publikování\,--\,4. projekt} \\
+            \Huge{Bibliografické citace}
+            \vspace{\stretch{0.618}}
+        \end{center} 
+        {\Large \today \hfill Andrei Shchapaniak}
+    \end{titlepage}
+    
+    \section{Úvod}
+    
+    Jsem si jistý, že každý člověk ve svém životě aspoň jednou potřeboval vytvořit nějaký dokument. Samozřejmě, musíte si vybrat vhodný textový editor, aby práce nad tím dokumentem byla rychlejší a kvalintěší. V 21. století je spousta různých textových editorů, ale dnes se budeme bavit o {\LaTeX}. Proč právě {\LaTeX}? Protože na můj pohled to je nejlepší editor, pokud chcete vytvářet typograficky kvalitní dokumenty. Doporučil bych přečíst porovnání editorů na stránce \cite{oestrem.com}.
+    
+    \section{Začínáme programovat v~{\LaTeX}u}
+    
+    Na začátku zavedeme 2 základní definice. 
+    \TeX\ je program na sazbu textu. \LaTeX\ je sada maker pro \TeX.
+    Dozvědět více o těchto systémech můžete v zajímavé knize \cite{book_2004}.
+    Podle názvu sekce jste už mohli pochopit, že práce s {\LaTeX}em je programováni. To je pravda, protože vše sázíte pomocí různých příkazů. Ale pokud neumíte programovat, ještě neznamená, že \LaTeX\ není pro vás. Pro začátečníky bude moc vhodná kniha \cite{book_2011}.
+    
+    \section{\LaTeX\ pro matematiky}
+    
+    \LaTeX\ vytváří vzorečky ve vnitřním matematickém módu \$ \ldots \$. Proto sazba matematického textu v {\LaTeX}u je jednodušší, než v jiných textových editorech. Pro mne byla moc zajímavá bakalářská práce k tomuto tématu \cite{master_2}. Taky můžete najít informace na webové stránce \cite{mat_latex}. 
+    
+    \section{Výhody {\LaTeX}u}
+    
+    Pokud ještě máte pochybnosti, proč musíte používat právě {\LaTeX}, v následujícím článku najdete důvody \cite{programujte.com}. Samozřejmě, \LaTeX\ není tak dostupný na všech počítačech, jak např. MS Word. Avšak existují online editory pro {\LaTeX}, např. {\LaTeX}lab, Overleaf atd. Více o nich mužete přečíst zde \cite{master_1}
+    
+    \section{Závěr}
+    
+    Na závěr bych chtěl tady nechat několik zajímavých článků \cite{article_2013_1} \cite{article_2013_2} \cite{article_2012}. Doufám, že v tomto dokumentu najdete několik užitečných věcí.
+    
+    \newpage
+    \bibliographystyle{czechiso}
+	\renewcommand{\refname}{Literatura}
+	\bibliography{proj4}
+
+\end{document}
