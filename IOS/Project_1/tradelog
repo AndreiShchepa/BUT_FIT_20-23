@@ -1,0 +1,281 @@
+#!/bin/sh
+export POSIXLY_CORREXT=yes
+export LC_NUMERIC="en_US.UTF-8"
+
+LOG_FILES=""
+GZ_LOG_FILES=""
+
+NUMBER_OF_ENTERED_WIDTH=0
+WIDTH_HIST_ORD=1
+WIDTH_GRAPH_POS=1000
+
+DATE_AFTER="0000-00-00 00:00:00"
+DATE_BEFORE="9999-99-99 99:99:99"
+
+NUMBER_COMMANDS=0
+FILTERS=""
+
+PRINT=""
+COMMAND=""
+SORT=""
+
+ERROR_WRONG_ARGUMENT="You have entered wrong argument."
+ERROR_MSG_FEW_ARGS="You have entered more than 1 command."
+ERROR_MSG_FEW_WIDTH="You have entered width for graphs more than 1 time."
+HELP_MSG="Run ./tradelog -h|--help"
+
+print_help()
+{
+    printf "\nPoužití: tradelog [-h|--help] [FILTR] [PŘÍKAZ] [LOG [LOG2 [...]]\n\n"
+    printf 'PŘÍKAZ:\n'
+    printf '\tlist-tick   -- výpis seznamu vyskytujících se burzovních symbolů, tzv. "tickerů"\n'
+    printf '\tprofit      -- výpis celkového zisku z uzavřených pozic\n'
+    printf '\tpos         -- výpis hodnot aktuálně držených pozic seřazených sestupně dle hodnoty\n'
+    printf '\tlast-price  -- výpis poslední známé ceny pro každý ticker\n'
+    printf '\thist-ord    -- výpis histogramu počtu transakcí dle tickeru\n'
+    printf '\tgraph-pos   -- výpis grafu hodnot držených pozic dle tickeru\n\n'
+    printf 'FILTR:\n'
+    printf "\t-a DATETIME -- after: jsou uvažovány pouze záznamy PO tomto datu (bez tohoto data). DATETIME je formátu YYYY-MM-DD HH:MM:SS\n"
+    printf '\t-b DATETIME -- before: jsou uvažovány pouze záznamy PŘED tímto datem (bez tohoto data)\n'
+    printf '\t-t TICKER   -- jsou uvažovány pouze záznamy odpovídající danému tickeru. Při více výskytech přepínače se bere množina všech uvedených tickerů\n'
+    printf '\t-w WIDTH    -- u výpisu grafů nastavuje jejich šířku, tedy délku nejdelšího řádku na WIDTH. Tedy, WIDTH musí být kladné celé číslo. Více výskytů přepínače je chybné spuštění\n\n'
+    printf '"--help|-h" vypíšou nápovědu s krátkým popisem každého příkazu a přepínače\n\n'
+}
+
+# writes all tickers from file or stdin
+list_tick()
+{
+    NUMBER_COMMANDS=$((NUMBER_COMMANDS+1))
+    SORT="| sort -u"
+    COMMAND="{ print \$2 }"
+}
+
+# writes actual price for all file or stdin
+profit()
+{
+    NUMBER_COMMANDS=$((NUMBER_COMMANDS+1))
+    COMMAND="\
+    { \
+        if (\$3 ~ \"sell\") { total += (\$4 * \$6) } \
+        else                { total -= (\$4 * \$6) } \
+    } END \
+    { \
+        printf \"%.2f\\n\", total \
+    }"
+}
+
+# writes actual price for each ticker
+pos()
+{
+    NUMBER_COMMANDS=$((NUMBER_COMMANDS+1))
+    SORT="| sort -n -t ':' -k2 -r"
+    COMMAND="\
+    { \
+        if (\$3 ~ \"buy\")      { total[\$2] += \$6 } \
+        else                    { total[\$2] -= \$6 } \
+        if (\$1 > date[\$2])    { last_price[\$2]  = \$4 } \
+    } END \
+    { \
+        for (ticker in total) \
+        { \
+            if (max_len < length(sprintf(\"%.2f\", total[ticker]*last_price[ticker]))) \
+            { \
+                max_len = length(sprintf(\"%.2f\", total[ticker]*last_price[ticker])) \
+            } \
+        } \
+        for (ticker in total) \
+        { printf \"%-10s: %*.2f\\n\", ticker, max_len, total[ticker]*last_price[ticker] } \
+    }"
+}
+
+# finds for each ticker the price by the latest date
+last_price()
+{
+    NUMBER_COMMANDS=$((NUMBER_COMMANDS+1))
+    SORT="| sort -u -t ':' -k1"
+    COMMAND="\
+    { \
+        if (\$1 > date[\$2]) { last_price[\$2] = \$4 } \
+    } END \
+    { \
+        for (ticker in last_price) \
+        { if (max_len < length(sprintf(\"%.2f\", last_price[ticker]))) { max_len = length(sprintf(\"%.2f\", last_price[ticker])) } } \
+        for (ticker in last_price) \
+        { printf \"%-10s: %*.2f\\n\", ticker, max_len, last_price[ticker] } \
+    }"
+}
+
+# writes graph for each ticker, where # is 1 position of ticker
+# if user has entered width, then
+# 1) we find max number of position of the ticker
+# 2) for each ticker: num_pos/max*width
+hist_org()
+{
+    NUMBER_COMMANDS=$((NUMBER_COMMANDS+1))
+    SORT="| sort -u -t ':' -k1"
+    COMMAND="\
+    { \
+        num_pos[\$2]+=1 \
+    } END \
+    { \
+        if ($WIDTH_HIST_ORD != 1) \
+        { \
+            for (ticker in num_pos) \
+            { \
+                if (max < num_pos[ticker]) { max = num_pos[ticker] } \
+            } \
+            for (ticker in num_pos) \
+            { \
+                num_pos[ticker] = num_pos[ticker]/max*$WIDTH_HIST_ORD \
+            } \
+        } \
+        for (ticker in num_pos) \
+        { \
+            printf \"%-10s: \", ticker; \
+            for (start = num_pos[ticker]; start >= 1.0; start-=1.0) \
+            { \
+                printf \"#\"
+            } \
+            printf \"\\n\";
+        } \
+    }"
+}
+
+# writes graph for each ticker, where num of '#' is positive profit for one ticker/1000
+# and num of '!' is negative profit for one ticker/1000
+# if user has entered width, it works same as hist_org
+graph_pos()
+{
+    NUMBER_COMMANDS=$((NUMBER_COMMANDS+1))
+    SORT="| sort -u -t ':' -k1"
+    COMMAND="\
+    { \
+        if (\$3 ~ \"buy\")      { total[\$2] += \$6 } \
+    else                        { total[\$2] -= \$6 } \
+        if (\$1 > date[\$2])    { last_price[\$2] = \$4  } \
+    } END \
+    { \
+        for (ticker in total) \
+        { \
+            if (max < total[ticker]*last_price[ticker]) { max = total[ticker]*last_price[ticker] } \
+            else \
+            { \
+                tmp = -1*total[ticker]*last_price[ticker]; \
+                if (max < tmp) { max = tmp } \
+            } \
+        } \
+        for (ticker in total) \
+        { \
+            if ($WIDTH_GRAPH_POS != 1000) { number_sym = total[ticker]*last_price[ticker]*$WIDTH_GRAPH_POS/max } \
+            else                          { number_sym = total[ticker]*last_price[ticker]/$WIDTH_GRAPH_POS } \
+            printf \"%-10s:\", ticker; \
+            if (number_sym >= 1 || number_sym <= -1) \
+            { \
+                printf \" \"; \
+                if (total[ticker]*last_price[ticker] > 0) \
+                { \
+                    for (start = number_sym; start >= 1.0; start-=1.0) \
+                    { \
+                        printf \"#\" \
+                    } \
+                } \
+                else \
+                { \
+                    for (start = number_sym; start <= -1.0; start+=1.0) \
+                    { \
+                        printf \"!\" \
+                    } \
+                } \
+            } \
+            printf \"\\n\" \
+        } \
+    }"
+}
+
+# iterate over all arguments using while loop
+while [ $# -ne 0 ]; do
+    case $1 in
+    -h | --help)
+        print_help
+        exit 0
+        ;;
+    -w)
+        WIDTH_HIST_ORD=$2
+        WIDTH_GRAPH_POS=$2
+        NUMBER_OF_ENTERED_WIDTH=$((NUMBER_OF_ENTERED_WIDTH+1))
+        shift
+        ;;
+    -b)
+        DATE_BEFORE="$2"
+        shift
+        ;;
+    -a)
+        DATE_AFTER="$2"
+        shift
+        ;;
+    -t)
+        if [ "$FILTERS" = "" ]; then
+            FILTERS="^$2\$"
+        else
+            FILTERS="^$2\$|$FILTERS"
+        fi
+        shift
+        ;;
+    list-tick)
+        list_tick
+        ;;
+    profit)
+        profit
+        ;;
+    pos)
+        pos
+        ;;
+    last-price)
+        last_price
+        ;;
+    hist-ord)
+        hist_org
+        ;;
+    graph-pos)
+        graph_pos
+        ;;
+    *.gz)
+        GZ_LOG_FILES="$GZ_LOG_FILES $1"
+        ;;
+    *.log)
+        LOG_FILES="$LOG_FILES $1"
+        ;;
+    *)
+        # if user has entered argument, which this program doenst support
+        printf "ERROR: %s\n%s\n" "$ERROR_WRONG_ARGUMENT" "$HELP_MSG" >&2
+        exit 3
+    esac
+    shift
+done
+
+if [ $NUMBER_COMMANDS -gt 1 ]; then
+    printf "ERROR: %s\n%s\n" "$ERROR_MSG_FEW_ARGS" "$HELP_MSG" >&2
+    exit 1
+elif [ $NUMBER_OF_ENTERED_WIDTH -gt 1 ]; then
+    printf "ERROR: %s\n%s\n" "$ERROR_MSG_FEW_WIDTH" "$HELP_MSG" >&2
+    exit 2
+elif [ $NUMBER_COMMANDS -eq 0 ]; then
+    COMMAND="{ print \$0 }"
+fi
+
+if [ "$GZ_LOG_FILES" = "" ] && [ "$LOG_FILES" = "" ]; then
+    PRINT="cat -"
+elif [ "$GZ_LOG_FILES" = "" ]; then
+    PRINT="cat $LOG_FILES"
+elif [ "$LOG_FILES" = "" ]; then
+    PRINT="gzip -d -c $GZ_LOG_FILES"
+else
+    PRINT="gzip -d -c $GZ_LOG_FILES | cat - $LOG_FILES"
+fi
+
+FILTERS="\$1 > \"$DATE_AFTER\" && \$1 < \"$DATE_BEFORE\" && \$2 ~ /$FILTERS/"
+
+# final command
+eval "$PRINT | awk -F ';' ' $FILTERS $COMMAND ' $SORT"
+
+exit 0
