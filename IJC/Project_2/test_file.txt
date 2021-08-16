@@ -1,0 +1,5 @@
+check 2 2
+Word
+1 2 3 4
+endif
+fun
