@@ -1,3 +1,8 @@
+/*
+ * I have decided to use dynamic memory for working with strings. 
+ * Therefore a big part of the code is related to working with
+ * dynamic strings. These functions are write under dunction main().
+ */
 #include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -10,7 +15,8 @@
 
 #define CMD_LOADCPU  "cat /proc/stat | grep \"\\<cpu\\>\""
 #define CMD_HOSTNAME "cat /proc/sys/kernel/hostname"
-#define CMD_CPUINFO  "cat /proc/cpuinfo | grep \"model name\" | head -n 1 | awk '{ for(i = 4; i<=NF; i++) printf $i\" \"; print \"\"}'"
+#define CMD_CPUINFO  "cat /proc/cpuinfo | grep \"model name\" | head -n 1 | " \ 
+                     "awk '{ for(i = 4; i<=NF; i++) printf $i\" \"; print \"\"}'"
 
 #define SIZE_CPU_ARR 10
 #define REALLOC_SIZE 20
@@ -21,6 +27,11 @@
 #define HELP_MSG      "Usage: %s port_number\nThe range of possible values " \
                       "of port_number is 0 to 65,535\n"
 
+/* 
+ * It is related to working with dynamic memory, 
+ * it is not very interesting.
+ * All macros are implemented for code readability.
+ */ 
 #define CHECK_ERR(cond, ret_val) \
         if ((cond)) {            \
             return (ret_val);    \
@@ -57,6 +68,22 @@
             return false;                \
         }
 
+//////////////////////////////////////////
+
+// It is related to working with dynamic memory, 
+// it is not very interesting.
+typedef struct dynstr {
+    char *str;
+    int length;
+    int alloc_size;
+} dynstr_t;
+
+bool alloc_str(dynstr_t *);
+bool realloc_str(dynstr_t *);
+bool fill_dynstr(dynstr_t *, FILE *);
+//////////////////////////////////
+
+// Possible requests 
 typedef enum type_of_req {
     ERR = -1,
     HOST_NAME,
@@ -64,6 +91,7 @@ typedef enum type_of_req {
     LOAD_CPU
 } type_of_req_t;
 
+// Const values to help calculate the load of CPU
 typedef enum stat_cpu {
     USER = 0,
     NICE,
@@ -77,53 +105,12 @@ typedef enum stat_cpu {
     GUEST_NICE
 } stat_cpu_t;
 
-typedef struct dynstr {
-    char *str;
-    int length;
-    int alloc_size;
-} dynstr_t;
-
-bool alloc_str(dynstr_t *str) {
-    str->str = malloc(ALLOC_SIZE);
-    CHECK_ERR(str->str == NULL, false);
-    
-    str->length = 0;
-    str->alloc_size = ALLOC_SIZE;
-    return true;
-}
-
-bool realloc_str(dynstr_t *str) {
-    char *tmp;
-    tmp = realloc(str->str, str->alloc_size + REALLOC_SIZE);
-    ERR_FREE(tmp == NULL, str->str);
-
-    str->str = tmp;
-    str->alloc_size += REALLOC_SIZE;
-    return true;
-}
-
-bool fill_dynstr(dynstr_t *str, FILE *in) {
-    int c, i = 0;
-    bool ret;
- 
-    ret = alloc_str(str);
-    CHECK_ERR(ret == false, false);
-
-    while ((c = fgetc(in)) != EOF) {
-        str->str[i++] = c;
-        
-        if (i == str->alloc_size) {
-            ret = realloc_str(str);
-            CHECK_ERR(ret == false, false);
-        }
-    }
-    
-    str->str[i] = '\0';
-    str->length = i ;
-
-    return true;
-}
-
+/*
+ * @brief Additional function to calc_load_cpu().
+ *        Get info from /proc/stat and separate string by space.
+ *
+ * @return On success true, otherwise false
+ */
 bool get_values(long long *arr) {
     FILE *in;
     bool ret;
@@ -150,6 +137,12 @@ bool get_values(long long *arr) {
     return true;
 }
 
+/*
+ * @brief Calculate the load of CPU 
+ * by https://stackoverflow.com/questions/23367857/accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
+ *
+ * @return On success true, otherwise false
+ */
 bool calc_load_cpu(char *loadcpu) {
     bool ret;
     long long PrevIdle, Idle, PrevNonIdle, NonIdle, PrevTotal, Total;
@@ -186,6 +179,10 @@ bool calc_load_cpu(char *loadcpu) {
     return true;
 }
 
+/*
+ * @brief Call system commands and save output.
+ * @return On success true, otherwise false
+ */
 bool get_info(dynstr_t *hostname, dynstr_t *cpuinfo) {
     FILE* in;
     bool ret;
@@ -206,6 +203,9 @@ bool get_info(dynstr_t *hostname, dynstr_t *cpuinfo) {
     return true;
 }
 
+/*
+ * @brief Check type of request 
+ */
 void msg(char* request, type_of_req_t *type) {
     char* token;
     token = strtok(request, " ");
@@ -231,6 +231,10 @@ void msg(char* request, type_of_req_t *type) {
     }
 }
 
+/*
+ * @brief Check validity of the entered number of the port.
+ * @return On success true, otherwise false
+ */
 bool check_port(int argc, char const *argv[], int *port) {
     char *trash;
 
@@ -271,9 +275,16 @@ int main(int argc, char const *argv[]) {
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
     sa.sin_port = htons(port);
-    
-    BIND(bind(server_fd, (struct sockaddr*) &sa, sizeof(sa)));
-    LISTEN(listen(server_fd, 1));    
+
+    if (bind(server_fd, (struct sockaddr*) &sa, sizeof(sa)) < 0) {
+        perror("ERROR: bind"); 
+        exit(EXIT_FAILURE);    
+    }
+
+    if (listen(server_fd, 1) < 0) {
+        perror("ERROR: listen"); 
+        exit(EXIT_FAILURE); 
+    }
 
     int new_socket, length;
     type_of_req_t t;
@@ -329,4 +340,45 @@ internal_err:
     free(hostname.str);
     free(cpuinfo.str);
     return -1;
+}
+
+bool alloc_str(dynstr_t *str) {
+    str->str = malloc(ALLOC_SIZE);
+    CHECK_ERR(str->str == NULL, false);
+    
+    str->length = 0;
+    str->alloc_size = ALLOC_SIZE;
+    return true;
+}
+
+bool realloc_str(dynstr_t *str) {
+    char *tmp;
+    tmp = realloc(str->str, str->alloc_size + REALLOC_SIZE);
+    ERR_FREE(tmp == NULL, str->str);
+
+    str->str = tmp;
+    str->alloc_size += REALLOC_SIZE;
+    return true;
+}
+
+bool fill_dynstr(dynstr_t *str, FILE *in) {
+    int c, i = 0;
+    bool ret;
+ 
+    ret = alloc_str(str);
+    CHECK_ERR(ret == false, false);
+
+    while ((c = fgetc(in)) != EOF) {
+        str->str[i++] = c;
+        
+        if (i == str->alloc_size) {
+            ret = realloc_str(str);
+            CHECK_ERR(ret == false, false);
+        }
+    }
+    
+    str->str[i] = '\0';
+    str->length = i ;
+
+    return true;
 }

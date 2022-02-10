@@ -1,2 +1,2 @@
-all: server.c
-	gcc -o hinfosvc server.c
+all: hinfosvc.c
+	gcc -o hinfosvc hinfosvc.c

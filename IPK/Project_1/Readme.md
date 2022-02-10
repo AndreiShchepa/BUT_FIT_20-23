@@ -1,8 +1,33 @@
 Project: implementation of an HTTP server\
 Author: xshcha00, Shchapaniak Andrei, [xshcha00@stud.fit.vutbr.cz](xshcha00@stud.fit.vutbr.cz)
 
-# Description
+## Description
+The server provides various information about the system.
+It listens on the specified port and returns the required information according to the URL.
+The answer type is text/plain.
+Communication with the server is possible using both a web browser and tools such as wget and curl.
+It is possible to shut down the server using CTRL+C.
 
-# Usage
+## Compilation
+```bash
+make
+```
 
-# Examples 
+## Running
+```bash
+./hinfosvc <port>
+```
+
+## Examples
+1. Obtaining of a domain name
+```bash
+curl http://servername:12345/hostname
+```
+2. Obtaining of an information about CPU
+```bash
+curl http://servername:12345/cpu-name
+```
+3. Obtaining of actual stress of the CPU 
+```bash
+curl http://servername:12345/load
+```
