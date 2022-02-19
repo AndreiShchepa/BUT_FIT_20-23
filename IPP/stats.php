@@ -1,8 +1,9 @@
 <?php
 
 class Stats {
-    private static $stats;
+    private static $stats = null;
 
+    # set all possible counters for statistics to 0
     private final function __construct() {
         $this->instructions = 0;
         $this->header = false;
@@ -16,7 +17,9 @@ class Stats {
         $this->jumps_map = array();
         $this->files = array();
     }
-
+    
+    # static method to create or return unique instance
+    # of this class
     public static function createStats() {
         if (!isset(self::$stats))
             self::$stats = new Stats();
@@ -64,6 +67,7 @@ class Stats {
     function getFiles()     { return $this->files; }
 
     function openFile() {
+        # open a file and delete it from array of the files for statistics
         $file = fopen($this->files[0], "w");
         $this->files = array_splice($this->files, 0, 1);
 
@@ -74,6 +78,10 @@ class Stats {
     }
 }
 
+/*
+ * Add to array line of each function, which performs jump
+ * or label
+ */
 function checkLabels($line_arr) {
     $instrJumps = array("JUMP", "JUMPIFEQ", "JUMPIFNEQ", "CALL");
     $instrLabel = "LABEL";
@@ -88,6 +96,9 @@ function checkLabels($line_arr) {
         $STATS->addLabelMap($OUTXML->getOrder() + 1, $line_arr[1]);
         $STATS->incLabels();
     }
+    else if (strcmp("RETURN", $line_arr[0]) == 0) {
+        $STATS->incJumps();
+    }
 }
 
 function sortJumps() {
@@ -96,6 +107,8 @@ function sortJumps() {
     $jumps = $STATS->getJumpsMap();
     $place;
 
+    # for each jump function will be determined, what type of jump 
+    # will be performed in the program     
     foreach ($jumps as $line_j => $label) {
         $line_l = array_search($label, $labels, true);
 

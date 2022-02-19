@@ -9,7 +9,7 @@ define("SYNTAX_LEX_ERR",  23);
 define("INTERNAL_ERR",    99);
 
 # Error messages
-define("WRONG_PARAM_MSG",   "Wrong parameter, enter --help for detailed information\n");
+define("WRONG_PARAM_MSG",     "Wrong parameter, enter --help for detailed information\n");
 define("INPUT_FILE_ERR_MSG",  "An error occured with input file\n");
 define("OUTPUT_FILE_ERR_MSG", "An error occured with output file\n");
 define("WRONG_HEADER_MSG",    "An error occured with header of the source code\n");

@@ -15,7 +15,7 @@
 
 #define CMD_LOADCPU  "cat /proc/stat | grep \"\\<cpu\\>\""
 #define CMD_HOSTNAME "cat /proc/sys/kernel/hostname"
-#define CMD_CPUINFO  "cat /proc/cpuinfo | grep \"model name\" | head -n 1 | " \ 
+#define CMD_CPUINFO  "cat /proc/cpuinfo | grep \"model name\" | head -n 1 | " \
                      "awk '{ for(i = 4; i<=NF; i++) printf $i\" \"; print \"\"}'"
 
 #define SIZE_CPU_ARR 10
@@ -32,33 +32,21 @@
  * it is not very interesting.
  * All macros are implemented for code readability.
  */ 
-#define CHECK_ERR(cond, ret_val) \
-        if ((cond)) {            \
-            return (ret_val);    \
+#define CHECK_ERR(cond, ret_val)         \
+        if ((cond)) {                    \
+            return (ret_val);            \
         }
 
-#define BIND(func)                 \
-        if ((func) < 0) {          \
-            perror("ERROR: bind"); \
-            exit(EXIT_FAILURE);    \
+#define ERR_FCLOSE(cond, file)           \
+        if ((cond)) {                    \
+            fclose((file));              \
+            return false;                \
         }
 
-#define LISTEN(func)                 \
-        if ((func) < 0) {            \
-            perror("ERROR: listen"); \
-            exit(EXIT_FAILURE);      \
-        }
-
-#define ERR_FCLOSE(cond, file) \
-        if ((cond)) {          \
-            fclose((file));    \
-            return false;      \
-        }
-
-#define ERR_FREE(cond, ptr) \
-        if ((cond)) {       \
-            free((ptr));    \
-            return false;   \
+#define ERR_FREE(cond, ptr)              \
+        if ((cond)) {                    \
+            free((ptr));                 \
+            return false;                \
         }
 
 #define ERR_FREE_FCLOSE(cond, file, ptr) \
@@ -91,7 +79,7 @@ typedef enum type_of_req {
     LOAD_CPU
 } type_of_req_t;
 
-// Const values to help calculate the load of CPU
+// Const values to help calculate a load of the CPU
 typedef enum stat_cpu {
     USER = 0,
     NICE,
@@ -139,7 +127,8 @@ bool get_values(long long *arr) {
 
 /*
  * @brief Calculate the load of CPU 
- * by https://stackoverflow.com/questions/23367857/accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
+ *        by https://stackoverflow.com/questions/23367857/
+ *        accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
  *
  * @return On success true, otherwise false
  */
@@ -266,22 +255,31 @@ int main(int argc, char const *argv[]) {
         
     ret = get_info(&hostname, &cpuinfo);
     CHECK_ERR(ret == false, -1);
-
+    
+    // Create a mechanism that gives programs access to the network
+    // AF_INET - IPv4
+    // SOCK_STREAM - TCP connection
+    // IPPROTO - TCP protocol
     if ((server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == 0) {
-        perror("ERROR: socket");
+        perror("ERROR: creating socket");
         exit(EXIT_FAILURE);
     }
 
+    // AF_INET - IP
+    // s_addr - any source ip address
+    // sin_port - entered port by the user  
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
     sa.sin_port = htons(port);
 
+    // bind the socket to the address and port number specified in addr
     if (bind(server_fd, (struct sockaddr*) &sa, sizeof(sa)) < 0) {
         perror("ERROR: bind"); 
         exit(EXIT_FAILURE);    
     }
 
-    if (listen(server_fd, 1) < 0) {
+    // wait for an incoming connection
+    if (listen(server_fd, 3) < 0) {
         perror("ERROR: listen"); 
         exit(EXIT_FAILURE); 
     }
@@ -291,13 +289,17 @@ int main(int argc, char const *argv[]) {
     int size = sizeof(sa);
 
     while(1) {
+        
+        // grab the first connection request on the queue of pending connections 
+        // and create a new socket for that connection
         int new_socket = accept(server_fd, (struct sockaddr *) &sa, (socklen_t*) &size);
         if (new_socket < 0) {
             perror("ERROR: accept");
             exit(EXIT_FAILURE);
         }
         
-        char buffer[1024] = {0};
+        // recieve message from the client
+        char buffer[2048] = {0};
         if (recv(new_socket, buffer, 1024, 0) < 0) {
             perror("ERROR: recieve");
             exit(EXIT_FAILURE);
@@ -332,9 +334,12 @@ int main(int argc, char const *argv[]) {
                 break;
         }
         
+        // send response to the client
         send(new_socket, response, length, 0); 
         close(new_socket);
     }
+    
+    return 0;
 
 internal_err:
     free(hostname.str);

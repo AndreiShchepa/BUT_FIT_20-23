@@ -28,11 +28,17 @@ function helper($argv) {
     }
 }
 
+# in the strings of the source code must be changed next symbols
 function replaceSpecSymbols($str) {
     $str = str_replace("&", "&amp;", $str);
     $str = str_replace("<", "&lt;",  $str);
     $str = str_replace(">", "&gt;",  $str);
     return $str;
+}
+
+function printXML() {
+    $OUTXML = outXML::createXML();
+    $OUTXML->printXML();    
 }
 
 ?>

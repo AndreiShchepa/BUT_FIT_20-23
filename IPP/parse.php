@@ -6,12 +6,13 @@ include 'stats.php';
 include 'help.php';
 
 class outXML {
-    private static $output;
+    private static $output = null;
 
     private final function __construct() {
         $this->order = 1;
         $this->arg = 0;
-    
+        
+        # add header to the XML file
         $this->code_XML = new DomDocument('1.0', 'UTF-8');
         $this->code_XML->formatOutput = true;
         $this->prog_XML = $this->code_XML->createElement('program');
@@ -19,6 +20,8 @@ class outXML {
         $this->code_XML->appendChild($this->prog_XML);
     }
 
+    # static method to create or return unique instance 
+    # of this class
     public static function createXML() {
         if (!isset(self::$output))
             self::$output = new outXML();
@@ -37,18 +40,22 @@ class outXML {
     function incArg()    { $this->arg++;   }
     function setArgTo0() { $this->arg = 0; }
 
+    # create a node of the tree XML structure 
     function createInstr($name_code) {
         $this->opcode_XML = $this->code_XML->createElement('instruction');
         $this->opcode_XML->setAttribute('order', $this->order);
         $this->opcode_XML->setAttribute('opcode', $name_code);
     }
 
+    # create and append a node of the instruction 
+    # int the tree XML structure 
     function createArg($value, $type) {
         $arg_XML = $this->code_XML->createElement("arg".$this->arg, $value);
         $arg_XML->setAttribute('type', $type);
         $this->opcode_XML->appendChild($arg_XML);
     }
 
+    # append a node of the tree XML structure 
     function finishInstr() {    
         $this->prog_XML->appendChild($this->opcode_XML);
     }
@@ -58,6 +65,7 @@ class outXML {
     } 
 }
 
+# regular expressios for lexical analysis of arguments
 $REGEXP_TYPE   = "/^(int|bool|string)$/";
 $REGEXP_VAR    = "/^(GF|LF|TF)@(\w|[_\-$%&*?!])*$/";
 $REGEXP_INT    = "/^int@([-\+]?[0-9]+$)/";
@@ -66,6 +74,10 @@ $REGEXP_NIL    = "/^nil@nil$/";
 $REGEXP_BOOL   = "/^bool@(false|true)$/";
 $REGEXP_LABEL  = "/^(\w|[_\-$%&*?!])*$/";
 
+/* 
+ * All possible instructions and their arguments.
+ * This global variable helps us to perform syntax analysis.
+ */
 $OPCODES = ["DEFVAR"      => ["<var>"],                       "POPS"      => ["<var>"],
             "CREATEFRAME" => [],                              "PUSHFRAME" => [],
             "POPFRAME"    => [],                              "RETURN"    => [],
@@ -106,6 +118,16 @@ function parseVar($arg) {
     $OUTXML->createArg($arg, "var");
 }
 
+function parseLabel($arg) {
+    $OUTXML = outXML::createXML();
+    global $REGEXP_LABEL;
+
+    if (preg_match($REGEXP_LABEL, $arg) == false)
+        reportError(SYNTAX_LEX_ERR, SYNTAX_LEX_ERR_MSG);
+
+    $OUTXML->createArg($arg, "label");
+}
+
 function parseSymb($arg) {
     $arr = array();
     $OUTXML = outXML::createXML();
@@ -119,26 +141,21 @@ function parseSymb($arg) {
         $arr[1] = replaceSpecSymbols($arr[1]);
         $OUTXML->createArg($arr[1], "string");
     }
-    else if (preg_match($REGEXP_INT, $arg, $arr))
+    else if (preg_match($REGEXP_INT, $arg, $arr)) {
         $OUTXML->createArg($arr[1], "int");
-    else if (preg_match($REGEXP_BOOL, $arg, $arr))
+    }
+    else if (preg_match($REGEXP_BOOL, $arg, $arr)) {
         $OUTXML->createArg($arr[1], "bool");
-    else if (preg_match($REGEXP_NIL, $arg, $arr))
+    }
+    else if (preg_match($REGEXP_NIL, $arg, $arr)) {
         $OUTXML->createArg("nil", "nil");
-    else if (preg_match($REGEXP_VAR, $arg))
+    }
+    else if (preg_match($REGEXP_VAR, $arg)) {
         $OUTXML->createArg($arg, "var");
-    else
+    }
+    else {
         reportError(SYNTAX_LEX_ERR, SYNTAX_LEX_ERR_MSG);
-}
-
-function parseLabel($arg) {
-    $OUTXML = outXML::createXML();
-    global $REGEXP_LABEL;
-
-    if (preg_match($REGEXP_LABEL, $arg) == false)
-        reportError(SYNTAX_LEX_ERR, SYNTAX_LEX_ERR_MSG);
-
-    $OUTXML->createArg($arg, "label");
+    }
 }
 
 function parseArgs($arg_line, $arg_exp) {
@@ -168,6 +185,7 @@ function checkCountArgs($args, $line_arr) {
     
     $OUTXML->createInstr($line_arr[0]);
     
+    # for each argument call lex analysis 
     for ($i = 1; $i <= $exp_args; $i++) {
         $OUTXML->incArg();
         parseArgs($line_arr[$i], $args[$i-1]);
@@ -175,11 +193,10 @@ function checkCountArgs($args, $line_arr) {
 
     $OUTXML->finishInstr();
     $OUTXML->incOrder();
-    
     $OUTXML->setArgTo0();
-    return true;
 }
 
+# the main function of this script
 function scanner() {
     $OUTXML = outXML::createXML();
     $STATS = Stats::createStats();
@@ -187,6 +204,7 @@ function scanner() {
     global $OPCODES;
 
     while (false !== ($line = fgets(STDIN))) {
+        # delete comment on the line
         if (preg_match("~#[^\r\n]*~", $line)) {
             $line = substr($line, 0, strpos($line, "#"));
             $STATS->incComments();
@@ -229,7 +247,8 @@ function scanner() {
         if ($STATS->getInstructions() !== $OUTXML->getOrder() - 1)
             reportError(WRONG_OPCODE, WRONG_OPCODE_MSG);
     }
-    
+
+    # a source code without the header is a wrong source code
     if ($STATS->getHeader() == false)
         reportError(WRONG_HEADER, WRONG_HEADER_MSG);
 }
@@ -238,6 +257,7 @@ helper($argv);
 $ret = parseCmdLine($argc, $argv);
 scanner();
 
+# case if the user has enetered a file for statistics
 if ($ret == true) {
     sortJumps();
     writeStats($argv, $argc);
