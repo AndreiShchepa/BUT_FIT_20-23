@@ -15,6 +15,13 @@
             (i)++; \
         }
 
+#define PRINT_MAC_ADDR(str, addr) printf(str \
+                "%02x:%02x:%02x:%02x:%02x:%02x\n", \
+                (addr)[0], (addr)[1], (addr)[2], \
+                (addr)[3], (addr)[4], (addr)[5])
+
+#define PRINT_LENGTH(pkt_len) printf("frame length: %u bytes\n", (pkt_len)) 
+
 class Rule {
 private:
     std::string port;
@@ -70,6 +77,10 @@ void packets_handler(u_char *args, const struct pcap_pkthdr *header, const u_cha
     
     switch (ntohs(eth->ether_type)) {
         case ETHERTYPE_IP:
+            PRINT_MAC_ADDR("src MAC: ", eth->ether_shost);
+            PRINT_MAC_ADDR("dst MAC: ", eth->ether_dhost);
+            PRINT_LENGTH(header->len);
+
             ipv4 = (struct ip*)(packet + 14); // create a const 14
             std::cout << "IPV4\n";
             switch (ipv4->ip_p) {
@@ -211,7 +222,7 @@ void create_rule(Rule* rule) {
     }
     
     protocols += protocols != "" ? ")" : "";
-    final_rule += final_rule != "" ? (" and " + protocols) : protocols;
+    //final_rule += final_rule != "" ? (" and " + protocols) : protocols;
     rule->setRule(final_rule);
 }
 
