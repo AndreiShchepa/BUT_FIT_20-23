@@ -67,7 +67,8 @@ class outXML {
 
 # regular expressios for lexical analysis of arguments
 $REGEXP_TYPE   = "/^(int|bool|string)$/";
-$REGEXP_VAR    = "/^(GF|LF|TF)@(\w|[_\-$%&*?!])*$/";
+#$REGEXP_VAR    = "/^(GF|LF|TF)@(\w|[_\-$%&*?!])*$/";
+$REGEXP_VAR    = "/^(GF|LF|TF)@([a-zA-Z]|[_\-$%&*?!])(\w|[_\-$%&*?!])*$/";
 $REGEXP_INT    = "/^int@([-\+]?[0-9]+$)/";
 $REGEXP_STRING = "/^string@(([^\s\#\\\\]|\\\\[0-9]{3})*$)/";
 $REGEXP_NIL    = "/^nil@nil$/";
@@ -92,7 +93,7 @@ $OPCODES = ["DEFVAR"      => ["<var>"],                       "POPS"      => ["<
             "MUL"         => ["<var>", "<symb>", "<symb>"],   "IDIV"      => ["<var>", "<symb>", "<symb>"],
             "LT"          => ["<var>", "<symb>", "<symb>"],   "GT"        => ["<var>", "<symb>", "<symb>"],
             "EQ"          => ["<var>", "<symb>", "<symb>"],   "AND"       => ["<var>", "<symb>", "<symb>"],
-            "OR"          => ["<var>", "<symb>", "<symb>"],   "NOT"       => ["<var>", "<symb>", "<symb>"],
+            "OR"          => ["<var>", "<symb>", "<symb>"],   "NOT"       => ["<var>", "<symb>"],
             "CONCAT"      => ["<var>", "<symb>", "<symb>"],   "GETCHAR"   => ["<var>", "<symb>", "<symb>"],
             "SETCHAR"     => ["<var>", "<symb>", "<symb>"],   "READ"      => ["<var>", "<type>"],
             "STRI2INT"    => ["<var>", "<symb>", "<symb>"]
@@ -114,7 +115,8 @@ function parseVar($arg) {
 
     if (preg_match($REGEXP_VAR, $arg) == false)
         reportError(SYNTAX_LEX_ERR, SYNTAX_LEX_ERR_MSG);
-
+    
+    $arg = replaceSpecSymbols($arg);
     $OUTXML->createArg($arg, "var");
 }
 
@@ -125,6 +127,7 @@ function parseLabel($arg) {
     if (preg_match($REGEXP_LABEL, $arg) == false)
         reportError(SYNTAX_LEX_ERR, SYNTAX_LEX_ERR_MSG);
 
+    $arg = replaceSpecSymbols($arg);
     $OUTXML->createArg($arg, "label");
 }
 
@@ -212,6 +215,7 @@ function scanner() {
 
         # delete new line in the end of line + delete myltiple whitespaces
         $line = rtrim($line);
+        $line = trim($line);
         $line = preg_replace('/\s+/', ' ', $line);
 
         if ($line == "")
@@ -225,7 +229,7 @@ function scanner() {
                 continue;
             }
             else {
-                reportError(WRONG_HEADER, WRONG_HEADER_MSG);
+                reportError(WRONG_OPCODE, WRONG_OPCODE_MSG);
             }
         }
 
@@ -236,6 +240,9 @@ function scanner() {
         
         foreach ($OPCODES as $opcode => $args) {
             if (strcmp($opcode, $line_arr[0]) == 0) {
+                if ($STATS->getHeader() == false)
+                    reportError(WRONG_HEADER, WRONG_HEADER_MSG);
+                
                 checkCountArgs($args, $line_arr);
                 break;
             }
@@ -244,8 +251,12 @@ function scanner() {
         # if opcode of the instruction is not correct, 
         # $ORDER will not be increased
         $STATS->incInstructions();
-        if ($STATS->getInstructions() !== $OUTXML->getOrder() - 1)
-            reportError(WRONG_OPCODE, WRONG_OPCODE_MSG);
+        if ($STATS->getInstructions() !== $OUTXML->getOrder() - 1) {
+            if ($STATS->getHeader() == true)
+                reportError(WRONG_OPCODE, WRONG_OPCODE_MSG);
+            else
+                reportError(WRONG_HEADER, WRONG_HEADER_MSG);
+        }
     }
 
     # a source code without the header is a wrong source code
