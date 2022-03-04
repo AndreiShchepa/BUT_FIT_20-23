@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import sys
 
 class Program:
     def __init__(self):
@@ -16,13 +17,13 @@ class Instruction:
         self._num_of_arg: int = num
         self._arguments_dict: dict() = dict_args
         self.instruction_list.append(self)
-    
+
     def get_opcode(self):
         return self._opcode
-    
+
     def get_num_of_arg(self):
         return self._num_of_arg
-    
+
     def get_args_dict(self):
         return self._arguments_dict
 
@@ -46,7 +47,7 @@ class Move(Instruction):
     def execute(self):
         print("Move is here!\n")
 
-class Createframe(Instruction):
+class Createframe(Instruction, Program):
     def __init__(self, dict_args):
         super().__init__("CREATEFRAME", 0, dict_args)
 
@@ -54,6 +55,7 @@ class Createframe(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self):
+        self._TF = dict()
         print("Createframe is here!\n")
 
 class Popframe(Instruction):
@@ -274,7 +276,8 @@ class Write(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self):
-        print("Write is here!\n")
+        (key, value), = self.get_args_dict().items()
+        print("" if key == "nil" else value, end='', file=sys.stdout)
 
 class Dprint(Instruction):
     def __init__(self, dict_args):
@@ -383,7 +386,7 @@ class Argument:
 
 class Factory:
     _dict_func = {"DEFVAR"  : Defvar , "CREATEFRAME" : Createframe, "POPFRAME" : Popframe,
-                  "BREAK"   : Break  , "CALL"        : Call       , "JUMP"     : Jump    , 
+                  "BREAK"   : Break  , "CALL"        : Call       , "JUMP"     : Jump    ,
                   "EXIT"    : Exit   , "MOVE"        : Move       , "ADD"      : Add     ,
                   "CONCAT"  : Concat , "STRI2INT"    : Stri2int   , "LT"       : Lt      ,
                   "RETURN"  : Return , "INT2CHAR"    : Int2char   , "EQ"       : Eq      ,
@@ -412,9 +415,9 @@ for child in root:
     dict_args = dict()
     for ch in child:
         dict_args[ch.attrib["type"]] = ch.text
-    
+
     instr = Factory.resolve(child.attrib["opcode"], dict_args)
 
 for val in Instruction.instruction_list:
-    print(val.get_opcode(), "  ", val.get_args_dict())
+    #print(val.get_opcode(), "  ", val.get_args_dict())
     val.execute()
