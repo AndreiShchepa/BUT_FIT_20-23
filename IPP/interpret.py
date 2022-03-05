@@ -458,7 +458,10 @@ class Pops(Instruction):
         frame, name, typ, value = get_values(self, 0)
         type_stack, value_stack = prg._data_stack.pop()
 
-        if typ != None and typ != type_stack:
+        if name == None:
+            exit(UNDECLARE_ERR)
+
+        if typ != type_stack and typ != None:
             #print("SEM_ERR pop")
             exit(TYPES_ERR)
 
@@ -791,7 +794,7 @@ class SubS(Instruction):
             #print("SEM_ERR pop")
             exit(TYPES_ERR)
 
-        prg._data_stack.append((type_stack1, int(value_stack1) - int(value_stack2)))
+        prg._data_stack.append((type_stack1, int(value_stack2) - int(value_stack1)))
 
 class MulS(Instruction):
     def __init__(self, dict_args):
@@ -837,7 +840,7 @@ class IdivS(Instruction):
             #print("Psel nahuy")
             exit(WRONG_VALUE_ERR)
 
-        prg._data_stack.append((type_stack1, int(value_stack1) // int(value_stack2)))
+        prg._data_stack.append((type_stack1, int(value_stack2) // int(value_stack1)))
 
 class ClearS(Instruction):
     def __init__(self, dict_args):
@@ -861,7 +864,7 @@ class JumpifeqS(Instruction):
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2:
+        if type_stack1 != type_stack2 and type_stack1 != "nil" and type_stack2 != "nil":
             #print("TYPES_ERR")
             exit(TYPES_ERR)
 
@@ -884,7 +887,7 @@ class JumpifneqS(Instruction):
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2:
+        if type_stack1 != type_stack2 and type_stack1 != "nil" and type_stack2 != "nil":
             #print("TYPES_ERR")
             exit(TYPES_ERR)
 
@@ -913,7 +916,7 @@ class NotS(Instruction):
             #print("SEM_ERR pop")
             exit(TYPES_ERR)
 
-        prg._data_stack.append(("bool", str(not str2bool(type_stack1)).lower()))
+        prg._data_stack.append(("bool", str(not str2bool(value_stack1)).lower()))
 
 class AndS(Instruction):
     def __init__(self, dict_args):
@@ -997,7 +1000,7 @@ class LtS(Instruction):
             #print("SEM_ERR pop")
             exit(TYPES_ERR)
 
-        prg._data_stack.append(("bool", str(value_stack1 < value_stack2).lower()))
+        prg._data_stack.append(("bool", str(value_stack2 < value_stack1).lower()))
 
 class GtS(Instruction):
     def __init__(self, dict_args):
@@ -1018,7 +1021,7 @@ class GtS(Instruction):
             #print("SEM_ERR pop")
             exit(TYPES_ERR)
 
-        prg._data_stack.append(("bool", str(value_stack1 > value_stack2).lower()))
+        prg._data_stack.append(("bool", str(value_stack2 > value_stack1).lower()))
 
 class Int2charS(Instruction):
     def __init__(self, dict_args):
@@ -1058,12 +1061,11 @@ class Stri2intS(Instruction):
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != "string" or type_stack2 != "int":
+        if type_stack1 != "int" or type_stack2 != "string":
             exit(TYPES_ERR)
         try:
-            prg._data_stack.append(("int", str(ord(value_stack1[int(value_stack2)]))))
+            prg._data_stack.append(("int", str(ord(value_stack2[int(value_stack1)]))))
         except:
-            #print("Mimo pole")
             exit(STRING_ERR)
 
 class Factory:
