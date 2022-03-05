@@ -76,8 +76,8 @@ class Instruction():
 
     def check_frame_none(self, frame):
         if frame == None:
-            print("PIZDAAAAAAAAAA")
-            exit(124356)
+            #print("PIZDAAAAAAAAAA")
+            exit(FRAME_ERR)
 
     def _get_var(self, var, prg, key):
         if key != "var":
@@ -121,8 +121,8 @@ class Defvar(Instruction):
         name, typ, value = self._get_var(value, prg, key)
 
         if name != None or typ != None or value != None:
-            print("Redeclarartion errr")
-            exit(126666)
+            #print("Redeclarartion errr")
+            exit(SEMANTIC_ERR)
 
         self._add_var(new_name, frame, None, value, prg)
 
@@ -134,16 +134,16 @@ class Move(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        frame1, name1, typ1, value1 = get_values(self)
+        frame1, name1, typ1, value1 = get_values(self, 0)
         where_is_name(name1)
 
-        frame2, name2, typ2, value2 = get_values(self)
+        frame2, name2, typ2, value2 = get_values(self, 1)
 
         if typ1 == None or typ1 == typ2:
             self._add_var(name1, frame1, typ2, value2, prg)
         else:
-            print("SEm Ertyrrrr")
-            exit(10344)
+            #print("SE")
+            exit(TYPES_ERR)
 
 class Createframe(Instruction):
     def __init__(self, dict_args):
@@ -164,8 +164,8 @@ class Popframe(Instruction):
 
     def execute(self, prg):
         if len(prg._frames) == 0:
-            print("ERRRRRRRRRRRRRR HOP")
-            exit(9876)
+            #print("ERRRRRRRRRRRRRR HOP")
+            exit(FRAME_ERR)
 
         prg._TF = prg._frames.pop()
 
@@ -197,8 +197,8 @@ class Call(Instruction):
             prg._return_lines.append(prg.get_line())
             prg.set_line(prg._labels_dict[value] - 1)
         except:
-            print("Label doenst exist")
-            exit(6547)
+            #print("Label doenst exist")
+            exit(SEMANTIC_ERR)
 
 class Jump(Instruction):
     def __init__(self, dict_args):
@@ -228,9 +228,9 @@ class Pushs(Instruction):
         frame = value[0:2]
         name, typ, value = self._get_var(value, prg, key)
 
-        if name == None and key == var:
-            print("Not defind var")
-            exit(999)
+        if name == None and typ == None and value == None:
+            #print("Not defind var")
+            exit(UNDECLARE_ERR)
 
         prg._data_stack.append((typ, value))
 
@@ -250,8 +250,8 @@ class Exit(Instruction):
         if key == "var":
             print("smth")
         elif key != "int" or int(value) > 49 or int(value) < 0:
-            print("err with exit cmd")
-            exit(9999)
+            #print("err with exit cmd")
+            exit(WRONG_VALUE_ERR)
 
         print("write stats")
         exit(int(value))
@@ -269,15 +269,15 @@ class Jumpifeq(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
 
         if typ2 != typ3:
-            print("SENMMNMMMM")
-            exit(6666)
+            #print("TYPES_ERR")
+            exit(TYPES_ERR)
 
         try:
             if value2 == value3:
                 prg.set_line(prg._labels_dict[value] - 1)
         except:
-            print("Label doenst exist")
-            exit(6547)
+            #print("Label doenst exist")
+            exit(SEMANTIC_ERR)
 
 class Add(Instruction):
     def __init__(self, dict_args):
@@ -396,16 +396,16 @@ class Setchar(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
 
         check_2_keys(typ1, "string", typ3, "string")
-        if typ2 != "int" or int(value2) < 0
-            print("Last errrrrrrr")
-            exit(6574)
+        if typ2 != "int" or int(value2) < 0:
+            #print("Last errrrrrrr")
+            exit(TYPES_ERR)
 
         try:
             value1[int(value2)] = value3[int(value2)]
             self._add_var(name1, frame1, "string", value1, prg)
         except:
             print("Mimo pole")
-            exit(58)
+            exit(STRING_ERR)
 
         self._add_var(name1, frame1, "int", str(int(value2) + int(value3)), prg)
 
@@ -425,14 +425,14 @@ class Stri2int(Instruction):
 
         check_2_keys(typ2, "string", typ3, "int")
         if typ1 != "string" and typ1 != None:
-            print("Sem ertggggg")
-            exit(12222)
+            #print("Sem ertggggg")
+            exit(TYPES_ERR)
 
         try:
             self._add_var(name1, frame1, "string", str(ord(value2[value3])), prg)
         except:
-            print("Mimo pole")
-            exit(58)
+            #print("Mimo pole")
+            exit(STRING_ERR)
 
 class Pops(Instruction):
     def __init__(self, dict_args):
@@ -443,15 +443,15 @@ class Pops(Instruction):
 
     def execute(self, prg):
         if len(prg._data_stack) == 0:
-            print("ERORO POP")
-            exit(56)
+            #print("ERORO POP")
+            exit(NOVALUE_ERR)
 
         frame, name, typ, value = get_values(self, 0)
         type_stack, value_stack = prg._data_stack.pop()
 
         if typ != None and typ != type_stack:
-            print("SEM_ERR pop")
-            exit(3242)
+            #print("SEM_ERR pop")
+            exit(TYPES_ERR)
 
         self._add_var(name, frame, type_stack, value_stack, prg)
 
@@ -464,11 +464,11 @@ class Pushframe(Instruction):
 
     def execute(self, prg):
         if prg._TF is None:
-            print("Not defined Temporary frame, exit with err")
-            exit(12345)
+            #print("Not defined Temporary frame, exit with err")
+            exit(FRAME_ERR)
 
-        prg.frames.append(prg._TF)
-        prg._LF = self._TF
+        prg._frames.append(prg._TF)
+        prg._LF = prg._TF
         prg._TF = None
 
 class Return(Instruction):
@@ -480,8 +480,8 @@ class Return(Instruction):
 
     def execute(self, prg):
         if len(prg._return_lines) == 0:
-            print("VUT FIT U ERR")
-            exit(5555)
+            #print("VUT FIT U ERR")
+            exit(NOVALUE_ERR)
 
         prg.set_line(prg._return_lines.pop() - 1)
 
@@ -524,8 +524,8 @@ class Type(Instruction):
 
         frame2, name2, typ2, value2 = get_values(self, 1)
         if typ1 != "string" and typ2 != None:
-            print("Semantic err")
-            exit(1111111)
+            #print("Semantic err")
+            exit(TYPES_ERR)
 
         self._add_var(name1, frame1, "string", typ2, prg)
 
@@ -570,8 +570,8 @@ class Int2char(Instruction):
 
         check_2_keys(typ1, "string", typ2, "int")
         if 0 <= value2 <= 1114111:
-            print("Nejaka chybaaaa")
-            exit(12442)
+            #print("Nejaka chybaaaa")
+            exit(STRING_ERR)
 
         self._add_var(name1, frame1, "int", str(chr(value2)), prg)
 
@@ -588,15 +588,15 @@ class Jumpifneq(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
 
         if typ2 != typ3:
-            print("SENMMNMMMM")
-            exit(6666)
+            #print("SENMMNMMMM")
+            exit(TYPES_ERR)
 
         try:
             if value2 != value3:
                 prg.set_line(prg._labels_dict[value] - 1)
         except:
-            print("Label doenst exist")
-            exit(6547)
+            #print("Label doenst exist")
+            exit(SEMANTIC_ERR)
 
 class Sub(Instruction):
     def __init__(self, dict_args):
@@ -631,8 +631,8 @@ class Idiv(Instruction):
 
         check_type(typ1, typ2, typ3, "int")
         if int(value3) == 0:
-            print("Psel nahuy")
-            exit(57)
+            #print("Psel nahuy")
+            exit(WRONG_VALUE_ERR)
 
         self._add_var(name1, frame1, "int", str(int(value2) // int(value3)), prg)
 
@@ -702,14 +702,14 @@ class Getchar(Instruction):
 
         check_2_keys(typ2, "string", typ3, "int")
         if typ1 != "string" and typ1 != None:
-            print("Sem ertggggg")
-            exit(12222)
+            #print("Sem ertggggg")
+            exit(TYPES_ERR)
 
         try:
             self._add_var(name1, frame1, "string", str(value2[value3]), prg)
         except:
-            print("Mimo pole")
-            exit(58)
+            #print("Mimo pole")
+            exit(STRING_ERR)
 
 class Read(Instruction):
     def __init__(self, dict_args):
@@ -756,12 +756,13 @@ class Factory:
         try:
             return cls._dict_func[string](dict_args)
         except:
-            print("ERROR with name of instruction, add exit error")
+            exit(STRUCT_ERR)
+            #print("ERROR with name of instruction, add exit error")
 
 def where_is_name(name):
     if name == None:
-        print("Where is name")
-        exit(999)
+        #print("Where is name")
+        exit(UNDECLARE_ERR)
 
 def get_values(instr, id):
     (key, value), = instr.get_arg(id).items()
@@ -772,27 +773,27 @@ def get_values(instr, id):
 def check_type(key1, key2, key3, typ):
     if ((key1 != typ and key1 != None ) or
     key2 != typ or key3 != typ):
-        print("Sem ERRRRRRR")
-        exit(9876)
+        #print("Se")
+        exit(TYPES_ERR)
 
 def check_2_keys(key1, typ1, key2, typ2):
     if ((key1 != typ1 and key1 != None) or
     key2 != typ2):
-        print("SEm errrr")
-        exit(245)
+        #print("SEm errrr")
+        exit(TYPES_ERR)
 
 def check_label(prg, opcode, dict):
     if opcode.upper() == "LABEL":
         if dict["label"] in prg._labels_dict:
-            print("JOPAAAAAAA")
-            exit(453235)
+            #print("JOPAAAAAAA")
+            exit(SEMANTIC_ERR)
 
         prg._labels_dict[dict["label"]] = prg.get_num_of_instrs()
 
 def check_order(prg, order):
     if prg.get_num_of_instrs() != int(order):
-        print("ER UUUUU")
-        exit(2987)
+        #print("ER UUUUU")
+        exit(STRUCT_ERR)
 
 def inc_insts(prg, opcode):
     if opcode not in ('LABEL', 'DPRINT', 'BREAK'):
@@ -816,23 +817,23 @@ try:
             exit(0)
         elif opt in ('--source'):
             if tree != None:
-                exit(10)
+                exit(PARAM_ERR)
             try:
                 tree = ET.parse(arg)
             except:
-                print("Nowm file zdaj")
-                exit(10000)
+                #print("Nowm file zdaj")
+                exit(PARAM_ERR)
         elif opt in ('--input'):
             if prg._input_f != None:
-                exit(10)
+                exit(PARAM_ERR)
             try:
                 prg._input_f = open(arg, "r")
             except:
                 print("Nowm file zdaj")
-                exit(10000)
+                exit(PARAM_ERR)
         else:
-            print("ERR with argggggg")
-            exit(10)
+            #print("ERR with argggggg")
+            exit(PARAM_ERR)
 except getopt.GetoptError:
     # Print something useful
     print ('usage: add.py -a <first_operand> -b <second_operand>')
@@ -850,9 +851,9 @@ except getopt.GetoptError:
         #    exit(ERR_PARAM)
 
 if prg._input_f == None and tree == None:
-    exit(10)
+    exit(PARAM_ERR)
 elif prg._input_f == None:
-    prg._input_f = input()
+    prg._input_f = None
 elif tree == None:
     tree = input()
 
