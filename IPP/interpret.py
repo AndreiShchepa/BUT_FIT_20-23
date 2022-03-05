@@ -1,6 +1,20 @@
 import xml.etree.ElementTree as ET
 import sys
 import re
+import getopt
+
+PARAM_ERR = 10
+INPUT_ERR = 11
+OUTPUT_ERR = 12
+FORMAT_ERR = 31
+STRUCT_ERR = 32
+SEMANTIC_ERR = 52
+TYPES_ERR = 53
+UNDECLARE_ERR = 54
+FRAME_ERR = 55
+NOVALUE_ERR = 56
+WRONG_VALUE_ERR = 57
+STRING_ERR = 58
 
 class Stats():
     def __init__(self):
@@ -21,6 +35,7 @@ class Program:
         self._num_of_instrs = 0
         self._data_stack = []
         self._stats = Stats()
+        self._input_f = None
 
     def get_line(self):
         return self._line
@@ -33,6 +48,9 @@ class Program:
 
     def set_num_of_instrs(self, val):
         self._num_of_instrs = val
+
+    def open_file(self, file):
+        self._input_f = open(file, 'r')
 
 class Instruction():
     _instruction_list = []
@@ -371,7 +389,25 @@ class Setchar(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Setchar is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        check_2_keys(typ1, "string", typ3, "string")
+        if typ2 != "int" or int(value2) < 0
+            print("Last errrrrrrr")
+            exit(6574)
+
+        try:
+            value1[int(value2)] = value3[int(value2)]
+            self._add_var(name1, frame1, "string", value1, prg)
+        except:
+            print("Mimo pole")
+            exit(58)
+
+        self._add_var(name1, frame1, "int", str(int(value2) + int(value3)), prg)
 
 class Stri2int(Instruction):
     def __init__(self, dict_args):
@@ -527,7 +563,17 @@ class Int2char(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Int2char is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+
+        check_2_keys(typ1, "string", typ2, "int")
+        if 0 <= value2 <= 1114111:
+            print("Nejaka chybaaaa")
+            exit(12442)
+
+        self._add_var(name1, frame1, "int", str(chr(value2)), prg)
 
 class Jumpifneq(Instruction):
     def __init__(self, dict_args):
@@ -673,12 +719,22 @@ class Read(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Read is here!\n")
+        line = input() if prg._input_f is None else prg._input_f.readline()
+        line = line.rtrim()
 
-class Argument:
-    def __init__(self, type_arg: str, str_arg):
-        self._type = type_arg
-        self._arg = str_arg
+        (key, value), = self.get_arg(1).items()
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        if value == 'int':
+            self._add_var(name1, frame1, "int", str(int(line)), prg)
+        elif value == 'string':
+            self._add_var(name1, frame1, "string", str(line), prg)
+        elif value == 'bool':
+            new_v = "true" if line == "true" else "false"
+            self._add_var(name1, frame1, "bool", new_v, prg)
+        if value == '':
+            self._add_var(name1, frame1, "nil", "nil", prg)
 
 class Factory:
     _dict_func = {"DEFVAR"  : Defvar , "CREATEFRAME" : Createframe, "POPFRAME" : Popframe,
@@ -743,9 +799,64 @@ def inc_insts(prg, opcode):
         prg._stats._insts += 1
 
 # MAIN
-tree = ET.parse('out.xml')
-root = tree.getroot()
+
 prg = Program()
+cmds = ['help', 'source=', 'input=', 'insts', 'hot', 'vars']
+tree = None
+try:
+    # Define the getopt parameters
+    opts, args = getopt.getopt(sys.argv[1:], '', cmds)
+    # Check if the options' length is 2 (can be enhanced
+      # Iterate the options and get the corresponding values
+    for opt, arg in opts:
+        if opt in ('--help'):
+            if len(sys.argv) != 2:
+                exit(10)
+            #print(help)
+            exit(0)
+        elif opt in ('--source'):
+            if tree != None:
+                exit(10)
+            try:
+                tree = ET.parse(arg)
+            except:
+                print("Nowm file zdaj")
+                exit(10000)
+        elif opt in ('--input'):
+            if prg._input_f != None:
+                exit(10)
+            try:
+                prg._input_f = open(arg, "r")
+            except:
+                print("Nowm file zdaj")
+                exit(10000)
+        else:
+            print("ERR with argggggg")
+            exit(10)
+except getopt.GetoptError:
+    # Print something useful
+    print ('usage: add.py -a <first_operand> -b <second_operand>')
+    exit(2)
+        #elif opt in ('--stats'):
+        #    if stIsPresent > 0:
+        #        self.stats.statsGroups[statsFile] = tmpList
+        #    else:
+        #        stIsPresent = 1
+        #    tmpList = list()
+        #    statsFile = arg
+        #elif opt in ('--insts', '--hot', '--vars') and stIsPresent > 0:
+        #    tmpList.append(opt[2:])
+        #else:
+        #    exit(ERR_PARAM)
+
+if prg._input_f == None and tree == None:
+    exit(10)
+elif prg._input_f == None:
+    prg._input_f = input()
+elif tree == None:
+    tree = input()
+
+root = tree.getroot()
 
 for child in root:
     dict_args = dict()
