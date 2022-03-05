@@ -2,6 +2,13 @@ import xml.etree.ElementTree as ET
 import sys
 import re
 
+class Stats():
+    def __init__(self):
+        self._insts = 0
+        self._hot = 0
+        self._vars = 0
+        self._insts_dict = dict()
+
 class Program:
     def __init__(self):
         self._GF = dict()
@@ -13,6 +20,7 @@ class Program:
         self._line = 0
         self._num_of_instrs = 0
         self._data_stack = []
+        self._stats = Stats()
 
     def get_line(self):
         return self._line
@@ -94,7 +102,7 @@ class Defvar(Instruction):
         frame, new_name = value[0:2], value[3:]
         name, typ, value = self._get_var(value, prg, key)
 
-        if name != None:
+        if name != None or typ != None or value != None:
             print("Redeclarartion errr")
             exit(126666)
 
@@ -108,15 +116,16 @@ class Move(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self)
+        where_is_name(name1)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
+        frame2, name2, typ2, value2 = get_values(self)
 
-        # check compatibility of types
-        self._add_var(name1, frame, typ2, value2, prg)
+        if typ1 == None or typ1 == typ2:
+            self._add_var(name1, frame1, typ2, value2, prg)
+        else:
+            print("SEm Ertyrrrr")
+            exit(10344)
 
 class Createframe(Instruction):
     def __init__(self, dict_args):
@@ -150,7 +159,11 @@ class Break(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Break is here!\n")
+        print("Current position: "    + prg._line    + "\n" + \
+              "Global frame: "        + prg._GF      + "\n" + \
+              "Local frame: "         + prg._LF      + "\n" + \
+              "Temporary frame: "     + prg._TF      + "\n" + \
+              "Instruction counter: " + prg._stats._insts, file=sys.stderr)
 
 class Call(Instruction):
     def __init__(self, dict_args):
@@ -233,7 +246,20 @@ class Jumpifeq(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Jumpifeq is here!\n")
+        (key, value), = self.get_arg(0).items()
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        if typ2 != typ3:
+            print("SENMMNMMMM")
+            exit(6666)
+
+        try:
+            if value2 == value3:
+                prg.set_line(prg._labels_dict[value] - 1)
+        except:
+            print("Label doenst exist")
+            exit(6547)
 
 class Add(Instruction):
     def __init__(self, dict_args):
@@ -243,22 +269,14 @@ class Add(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
-
-        (key3, value3), = self.get_arg(2).items()
-        name3, typ3, value3 = self._get_var(value3, prg, key3)
-
-        check_type(key1, key2, key3, "int")
-        self._add_var(name1, frame, "int", str(int(value2) + int(value3)), prg)
+        check_type(typ1, typ2, typ3, "int")
+        self._add_var(name1, frame1, "int", str(int(value2) + int(value3)), prg)
 
 class Mul(Instruction):
     def __init__(self, dict_args):
@@ -268,22 +286,14 @@ class Mul(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
-
-        (key3, value3), = self.get_arg(2).items()
-        name3, typ3, value3 = self._get_var(value3, prg, key3)
-
-        check_type(key1, key2, key3, "int")
-        self._add_var(name1, frame, "int", str(int(value2) * int(value3)), prg)
+        check_type(typ1, typ2, typ3, "int")
+        self._add_var(name1, frame1, "int", str(int(value2) * int(value3)), prg)
 
 class Lt(Instruction):
     def __init__(self, dict_args):
@@ -293,7 +303,14 @@ class Lt(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Lt is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        check_type(typ1, typ2, typ3, typ2)
+        self._add_var(name1, frame1, "bool", str(value2 < value3).lower(), prg)
 
 class Eq(Instruction):
     def __init__(self, dict_args):
@@ -303,7 +320,14 @@ class Eq(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Eq is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        check_type(typ1, typ2, typ3, typ2)
+        self._add_var(name1, frame1, "bool", str(value2 == value3).lower(), prg)
 
 class Or(Instruction):
     def __init__(self, dict_args):
@@ -313,22 +337,14 @@ class Or(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
-
-        (key3, value3), = self.get_arg(2).items()
-        name3, typ3, value3 = self._get_var(value3, prg, key3)
-
-        check_type(key1, key2, key3, "bool")
-        self._add_var(name1, frame, "bool", str(bool(value2) or bool(value3)), prg)
+        check_type(typ1, typ2, typ3, "bool")
+        self._add_var(name1, frame1, "bool", str(bool(value2) * bool(value3)).lower(), prg)
 
 class Concat(Instruction):
     def __init__(self, dict_args):
@@ -338,22 +354,14 @@ class Concat(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
-
-        (key3, value3), = self.get_arg(2).items()
-        name3, typ3, value3 = self._get_var(value3, prg, key3)
-
-        check_type(key1, key2, key3, "string")
-        self._add_var(name1, frame, "string", value2 + value3, prg)
+        check_type(typ1, typ2, typ3, "string")
+        self._add_var(name1, frame1, "string", value2 * value3, prg)
 
 class Setchar(Instruction):
     def __init__(self, dict_args):
@@ -373,7 +381,22 @@ class Stri2int(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Stri2int is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        check_2_keys(typ2, "string", typ3, "int")
+        if typ1 != "string" and typ1 != None:
+            print("Sem ertggggg")
+            exit(12222)
+
+        try:
+            self._add_var(name1, frame1, "string", str(ord(value2[value3])), prg)
+        except:
+            print("Mimo pole")
+            exit(58)
 
 class Pops(Instruction):
     def __init__(self, dict_args):
@@ -383,7 +406,18 @@ class Pops(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Pops is here!\n")
+        if len(prg._data_stack) == 0:
+            print("ERORO POP")
+            exit(56)
+
+        frame, name, typ, value = get_values(self, 0)
+        type_stack, value_stack = prg._data_stack.pop()
+
+        if typ != None and typ != type_stack:
+            print("SEM_ERR pop")
+            exit(3242)
+
+        self._add_var(name, frame, type_stack, value_stack, prg)
 
 class Pushframe(Instruction):
     def __init__(self, dict_args):
@@ -423,16 +457,10 @@ class Strlen(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
-
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
+        frame2, name2, typ2, value2 = get_values(self, 1)
 
         check_2_keys(key1, "int", key2, "string")
         self._add_var(name1, frame, "int", strlen(value2), prg)
@@ -445,7 +473,6 @@ class Label(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        #print(prg._labels_dict)
         pass
 
 class Type(Instruction):
@@ -456,18 +483,15 @@ class Type(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        (key, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key)
-
+        frame2, name2, typ2, value2 = get_values(self, 1)
         if typ1 != "string" and typ2 != None:
             print("Semantic err")
             exit(1111111)
 
-        self._add_var(name1, frame, "string", typ2, prg)
+        self._add_var(name1, frame1, "string", typ2, prg)
 
 class Write(Instruction):
     def __init__(self, dict_args):
@@ -477,11 +501,10 @@ class Write(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key, value), = self.get_arg(0).items()
-        name, key, value = self._get_var(value, prg, key)
+        frame, name, typ, value = get_values(self, 0)
 
-        value = value if "string" != key else re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), value)
-        print("" if key == "nil" else value, end='', file=sys.stdout)
+        value = value if "string" != typ else re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), value)
+        print("" if typ == "nil" else value, end='', file=sys.stdout)
 
 class Dprint(Instruction):
     def __init__(self, dict_args):
@@ -491,11 +514,10 @@ class Dprint(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key, value), = self.get_arg(0).items()
-        name, key, value = self._get_var(value, prg, key)
+        frame, name, typ, value = get_values(self)
 
-        value = value if "string" != key else re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), value)
-        print("" if key == "nil" else value, end='', file=sys.stderr)
+        value = value if "string" != typ else re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), value)
+        print("" if typ == "nil" else value, end='', file=sys.stderr)
 
 class Int2char(Instruction):
     def __init__(self, dict_args):
@@ -515,7 +537,20 @@ class Jumpifneq(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Jumpifneq is here!\n")
+        (key, value), = self.get_arg(0).items()
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        if typ2 != typ3:
+            print("SENMMNMMMM")
+            exit(6666)
+
+        try:
+            if value2 != value3:
+                prg.set_line(prg._labels_dict[value] - 1)
+        except:
+            print("Label doenst exist")
+            exit(6547)
 
 class Sub(Instruction):
     def __init__(self, dict_args):
@@ -525,22 +560,14 @@ class Sub(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
-
-        (key3, value3), = self.get_arg(2).items()
-        name3, typ3, value3 = self._get_var(value3, prg, key3)
-
-        check_type(key1, key2, key3, "int")
-        self._add_var(name1, frame, "int", str(int(value2) - int(value3)), prg)
+        check_type(typ1, typ2, typ3, "int")
+        self._add_var(name1, frame1, "int", str(int(value2) - int(value3)), prg)
 
 class Idiv(Instruction):
     def __init__(self, dict_args):
@@ -550,26 +577,18 @@ class Idiv(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
-
-        (key3, value3), = self.get_arg(2).items()
-        name3, typ3, value3 = self._get_var(value3, prg, key3)
-
-        check_type(key1, key2, key3, "int")
+        check_type(typ1, typ2, typ3, "int")
         if int(value3) == 0:
             print("Psel nahuy")
             exit(57)
 
-        self._add_var(name1, frame, "int", str(int(value2) // int(value3)), prg)
+        self._add_var(name1, frame1, "int", str(int(value2) // int(value3)), prg)
 
 class Gt(Instruction):
     def __init__(self, dict_args):
@@ -579,7 +598,14 @@ class Gt(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Gt is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        check_type(typ1, typ2, typ3, typ2)
+        self._add_var(name1, frame1, "bool", str(value2 > value3).lower(), prg)
 
 class And(Instruction):
     def __init__(self, dict_args):
@@ -589,22 +615,14 @@ class And(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        (key1, value1), = self.get_arg(0).items()
-        frame = value1[0:2]
-        name1, typ1, value1 = self._get_var(value1, prg, key1)
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
 
-        if name1 == None:
-            print("Where is name")
-            exit(999)
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
 
-        (key2, value2), = self.get_arg(1).items()
-        name2, typ2, value2 = self._get_var(value2, prg, key2)
-
-        (key3, value3), = self.get_arg(2).items()
-        name3, typ3, value3 = self._get_var(value3, prg, key3)
-
-        check_type(key1, key2, key3, "bool")
-        self._add_var(name1, frame, "bool", str(bool(value2) and bool(value3)), prg)
+        check_type(typ1, typ2, typ3, "bool")
+        self._add_var(name1, frame1, "bool", str(bool(value2) * bool(value3)).lower(), prg)
 
 class Not(Instruction):
     def __init__(self, dict_args):
@@ -614,7 +632,13 @@ class Not(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Not is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+
+        check_2_keys(typ1, "bool", typ2, "bool")
+        self._add_var(name1, frame1, "bool", str(not bool(value2)).lower(), prg)
 
 class Getchar(Instruction):
     def __init__(self, dict_args):
@@ -624,7 +648,22 @@ class Getchar(Instruction):
         num = super().get_num_of_arg()
 
     def execute(self, prg):
-        print("Getchar is here!\n")
+        frame1, name1, typ1, value1 = get_values(self, 0)
+        where_is_name(name1)
+
+        frame2, name2, typ2, value2 = get_values(self, 1)
+        frame3, name3, typ3, value3 = get_values(self, 2)
+
+        check_2_keys(typ2, "string", typ3, "int")
+        if typ1 != "string" and typ1 != None:
+            print("Sem ertggggg")
+            exit(12222)
+
+        try:
+            self._add_var(name1, frame1, "string", str(value2[value3]), prg)
+        except:
+            print("Mimo pole")
+            exit(58)
 
 class Read(Instruction):
     def __init__(self, dict_args):
@@ -663,14 +702,25 @@ class Factory:
         except:
             print("ERROR with name of instruction, add exit error")
 
+def where_is_name(name):
+    if name == None:
+        print("Where is name")
+        exit(999)
+
+def get_values(instr, id):
+    (key, value), = instr.get_arg(id).items()
+    frame = value[0:2]
+    name, typ, value = instr._get_var(value, prg, key)
+    return frame, name, typ, value
+
 def check_type(key1, key2, key3, typ):
-    if ((key1 != typ and key1 != "var" ) or
+    if ((key1 != typ and key1 != None ) or
     key2 != typ or key3 != typ):
         print("Sem ERRRRRRR")
         exit(9876)
 
 def check_2_keys(key1, typ1, key2, typ2):
-    if ((key1 != typ1 and key1 != "var") or
+    if ((key1 != typ1 and key1 != None) or
     key2 != typ2):
         print("SEm errrr")
         exit(245)
@@ -687,6 +737,10 @@ def check_order(prg, order):
     if prg.get_num_of_instrs() != int(order):
         print("ER UUUUU")
         exit(2987)
+
+def inc_insts(prg, opcode):
+    if opcode not in ('LABEL', 'DPRINT', 'BREAK'):
+        prg._stats._insts += 1
 
 # MAIN
 tree = ET.parse('out.xml')
@@ -710,4 +764,5 @@ for child in root:
 
 while prg.get_line() < prg.get_num_of_instrs():
     Instruction.get_instr_list()[prg.get_line()].execute(prg)
+    inc_insts(prg, Instruction.get_instr_list()[prg.get_line()]._opcode)
     prg.set_line(prg.get_line() + 1)
