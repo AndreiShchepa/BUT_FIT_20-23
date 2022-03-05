@@ -532,9 +532,14 @@ class Type(Instruction):
         where_is_name(name1)
 
         frame2, name2, typ2, value2 = get_values(self, 1)
-        if typ1 != "string" and typ2 != None:
+
+        if typ1 != "string" and typ1 != None:
             #print("Semantic err")
             exit(TYPES_ERR)
+
+        typ2 = "" if typ2 == None else typ2
+
+        #if typ2
 
         self._add_var(name1, frame1, "string", typ2, prg)
 
@@ -547,6 +552,8 @@ class Write(Instruction):
 
     def execute(self, prg):
         frame, name, typ, value = get_values(self, 0)
+
+        #print(value, typ)
 
         value = value if "string" != typ else re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), value)
         print("" if typ == "nil" else value, end='', file=sys.stdout)
@@ -1031,7 +1038,7 @@ class Int2charS(Instruction):
             exit(TYPES_ERR)
 
         if 0 <= int(value_stack1) <= 1114111:
-            prg._data_stack.append(("string", str(chr(value_stack1)).lower()))
+            prg._data_stack.append(("string", str(chr(int(value_stack1)))))
         else:
             #print("Nejaka chybaaaa")
             exit(STRING_ERR)
@@ -1051,10 +1058,10 @@ class Stri2intS(Instruction):
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != "string" or type_stack1 != "int":
+        if type_stack1 != "string" or type_stack2 != "int":
             exit(TYPES_ERR)
         try:
-            prg._data_stack.append(("string", str(ord(value_stack1[value_stack2])).lower()))
+            prg._data_stack.append(("int", str(ord(value_stack1[int(value_stack2)]))))
         except:
             #print("Mimo pole")
             exit(STRING_ERR)
@@ -1224,9 +1231,13 @@ for child in root:
         dict_args[idx] = {ch.attrib["type"] : ch.text}
         idx += 1
 
-    instr = Factory.resolve(child.attrib["opcode"], dict_args)
+    instr = Factory.resolve(child.attrib["opcode"].upper(), dict_args)
+
+    if len(dict_args) != instr.get_num_of_arg():
+        exit(STRUCT_ERR)
+
     if len(dict_args) > 0:
-        check_label(prg, child.attrib["opcode"], dict_args[0])
+        check_label(prg, child.attrib["opcode"].upper(), dict_args[0])
 
 while prg.get_line() < prg.get_num_of_instrs():
     Instruction.get_instr_list()[prg.get_line()].execute(prg)
