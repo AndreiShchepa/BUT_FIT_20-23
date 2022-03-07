@@ -67,9 +67,8 @@ class outXML {
 
 # regular expressios for lexical analysis of arguments
 $REGEXP_TYPE   = "/^(int|bool|string)$/";
-#$REGEXP_VAR    = "/^(GF|LF|TF)@(\w|[_\-$%&*?!])*$/";
 $REGEXP_VAR    = "/^(GF|LF|TF)@([a-zA-Z]|[_\-$%&*?!])(\w|[_\-$%&*?!])*$/";
-$REGEXP_INT    = "/^int@([-\+]?[0-9]+$)/";
+$REGEXP_INT    = "/^int@(([-\+]?[0-9]+$)|(0[xX][0-9a-fA-F]+$)|(0[oO][0-7]+$))/";
 $REGEXP_STRING = "/^string@(([^\s\#\\\\]|\\\\[0-9]{3})*$)/";
 $REGEXP_NIL    = "/^nil@nil$/";
 $REGEXP_BOOL   = "/^bool@(false|true)$/";
