@@ -114,16 +114,12 @@ class Defvar(Instruction):
     def __init__(self, dict_args):
         super().__init__("DEFVAR", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
         frame, new_name = value[0:2], value[3:]
         name, typ, value = self._get_var(value, prg, key)
 
         if name != None or typ != None or value != None:
-            #print("Redeclarartion errr")
             exit(SEMANTIC_ERR)
 
         self._add_var(new_name, frame, None, value, prg)
@@ -132,24 +128,20 @@ class Move(Instruction):
     def __init__(self, dict_args):
         super().__init__("MOVE", 2, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
         check_declare_var(name1, typ1, value1)
         frame2, name2, typ2, value2 = get_values(self, 1)
         check_declare_var(name2, typ2, value2)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, None, None)
+        if value2 == None:
+            exit(NOVALUE_ERR)
+
         self._add_var(name1, frame1, typ2, value2, prg)
 
 class Createframe(Instruction):
     def __init__(self, dict_args):
         super().__init__("CREATEFRAME", 0, dict_args)
-
-    def check_args(self):
-        num = super().get_num_of_arg()
 
     def execute(self, prg):
         prg._TF = dict()
@@ -158,12 +150,8 @@ class Popframe(Instruction):
     def __init__(self, dict_args):
         super().__init__("POPFRAME", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         if len(prg._frames) == 0:
-            #print("ERRRRRRRRRRRRRR HOP")
             exit(FRAME_ERR)
 
         prg._TF = prg._frames.pop()
@@ -172,9 +160,6 @@ class Popframe(Instruction):
 class Break(Instruction):
     def __init__(self, dict_args):
         super().__init__("BREAK", 0, dict_args)
-
-    def check_args(self):
-        num = super().get_num_of_arg()
 
     def execute(self, prg):
         print("Current position: "    + prg._line    + "\n" + \
@@ -187,9 +172,6 @@ class Call(Instruction):
     def __init__(self, dict_args):
         super().__init__("CALL", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
 
@@ -197,15 +179,11 @@ class Call(Instruction):
             prg._return_lines.append(prg.get_line())
             prg.set_line(prg._labels_dict[value] - 1)
         except:
-            #print("Label doenst exist")
             exit(SEMANTIC_ERR)
 
 class Jump(Instruction):
     def __init__(self, dict_args):
         super().__init__("JUMP", 1, dict_args)
-
-    def check_args(self):
-        num = super().get_num_of_arg()
 
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
@@ -213,30 +191,34 @@ class Jump(Instruction):
         try:
             prg.set_line(prg._labels_dict[value] - 1)
         except:
-            #print("Label doenst exist")
             exit(SEMANTIC_ERR)
 
 class Pushs(Instruction):
     def __init__(self, dict_args):
         super().__init__("PUSHS", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
         frame = value[0:2] if key == "var" else None
         name, typ, value = self._get_var(value, prg, key)
         check_declare_var(name, typ, value)
 
-        prg._data_stack.append((typ, value))
+        if value == None:
+            exit(NOVALUE_ERR)
+        else:
+            prg._data_stack.append((typ, value))
 
 class Exit(Instruction):
     def __init__(self, dict_args):
         super().__init__("EXIT", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value1 == None:
+            exit(NOVALUE_ERR)
+        if typ1 != "int":
+            exit(TYPES_ERR)
+        if int(value1) > 49 or int(value1) < 0:
+            exit(WRONG_VALUE_ERR)
 
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
@@ -244,15 +226,18 @@ class Exit(Instruction):
         name, typ, value = self._get_var(value, prg, key)
         check_declare_var(name, typ, value)
 
-        check_args(self._opcode, typ, value, None, None, None, None)
+        self.check_semantic(typ, value, None, None, None, None)
         exit(int(value))
 
 class Jumpifeq(Instruction):
     def __init__(self, dict_args):
         super().__init__("JUMPIFEQ", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != typ3 and typ2 != "nil" and typ3 != "nil":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
@@ -261,20 +246,22 @@ class Jumpifeq(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, None, None, typ2, value2, typ3, value3)
-        try:
-            if value2 == value3:
+        self.check_semantic(None, None, typ2, value2, typ3, value3)
+        if value in prg._labels_dict:
+            if value2 == value3 :
                 prg.set_line(prg._labels_dict[value] - 1)
-        except:
-            #print("Label doenst exist")
+        else:
             exit(SEMANTIC_ERR)
 
 class Add(Instruction):
     def __init__(self, dict_args):
         super().__init__("ADD", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ3 != "int":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -284,15 +271,18 @@ class Add(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "int", str(int(value2) + int(value3)), prg)
 
 class Mul(Instruction):
     def __init__(self, dict_args):
         super().__init__("MUL", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ3 != "int":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -302,15 +292,20 @@ class Mul(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "int", str(int(value2) * int(value3)), prg)
 
 class Lt(Instruction):
     def __init__(self, dict_args):
         super().__init__("LT", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 == "nil" or typ3 == "nil":
+            exit(TYPES_ERR)
+        if typ2 != typ3:
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -320,15 +315,25 @@ class Lt(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
-        self._add_var(name1, frame1, "bool", str(value2 < value3).lower(), prg)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
+        if typ2 == "int":
+            self._add_var(name1, frame1, "bool", str(int(value2) < int(value3)).lower(), prg)
+        elif typ2 == "string":
+            self._add_var(name1, frame1, "bool", str(value2 < value3).lower(), prg)
+        elif typ2 == "bool" and value2 == "false" and value3 == "true":
+            self._add_var(name1, frame1, "bool", "true", prg)
+        else:
+            self._add_var(name1, frame1, "bool", "false", prg)
 
 class Eq(Instruction):
     def __init__(self, dict_args):
         super().__init__("EQ", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != typ3 and typ2 != "nil" and typ3 != "nil":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -338,15 +343,18 @@ class Eq(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "bool", str(value2 == value3).lower(), prg)
 
 class Or(Instruction):
     def __init__(self, dict_args):
-        super().__init__("Or", 3, dict_args)
+        super().__init__("OR", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "bool" or typ3 != "bool":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -356,15 +364,18 @@ class Or(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "bool", str(str2bool(value2) or str2bool(value3)).lower(), prg)
 
 class Concat(Instruction):
     def __init__(self, dict_args):
         super().__init__("CONCAT", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "string" or typ3 != "string":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -374,15 +385,20 @@ class Concat(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "string", value2 + value3, prg)
 
 class Setchar(Instruction):
     def __init__(self, dict_args):
         super().__init__("SETCHAR", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value1 == None or value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ3 != "string" or typ1 != "string":
+            exit(TYPES_ERR)
+        if int(value2) < 0 or int(value2) + 1 > len(value1):
+            exit(STRING_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -392,20 +408,24 @@ class Setchar(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         try:
-            value1[int(value2)] = value3[0]
+            value1 = value1[:int(value2)] + value3[0] + value1[int(value2)+1:]
             self._add_var(name1, frame1, "string", value1, prg)
         except:
-            #print("Mimo pole")
             exit(STRING_ERR)
 
 class Stri2int(Instruction):
     def __init__(self, dict_args):
         super().__init__("STRI2INT", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ3 != "int" or typ2 != "string":
+            exit(TYPES_ERR)
+        if int(value3) < 0 or int(value3) + 1 > len(value2):
+            exit(STRING_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -415,23 +435,18 @@ class Stri2int(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         try:
-            self._add_var(name1, frame1, "string", str(ord(value2[value3])), prg)
+            self._add_var(name1, frame1, "int", str(ord(value2[int(value3)])), prg)
         except:
-            #print("Mimo pole")
             exit(STRING_ERR)
 
 class Pops(Instruction):
     def __init__(self, dict_args):
         super().__init__("POPS", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         if len(prg._data_stack) == 0:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         frame, name, typ, value = get_values(self, 0)
@@ -444,12 +459,8 @@ class Pushframe(Instruction):
     def __init__(self, dict_args):
         super().__init__("PUSHFRAME", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         if prg._TF is None:
-            #print("Not defined Temporary frame, exit with err")
             exit(FRAME_ERR)
 
         prg._frames.append(prg._TF)
@@ -460,12 +471,8 @@ class Return(Instruction):
     def __init__(self, dict_args):
         super().__init__("Return", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         if len(prg._return_lines) == 0:
-            #print("VUT FIT U ERR")
             exit(NOVALUE_ERR)
 
         prg.set_line(prg._return_lines.pop())
@@ -474,8 +481,11 @@ class Strlen(Instruction):
     def __init__(self, dict_args):
         super().__init__("STRLEN", 2, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "string":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -483,15 +493,12 @@ class Strlen(Instruction):
         frame2, name2, typ2, value2 = get_values(self, 1)
         check_declare_var(name2, typ2, value2)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, None, None)
-        self._add_var(name1, frame, "int", strlen(value2), prg)
+        self.check_semantic(typ1, value1, typ2, value2, None, None)
+        self._add_var(name1, frame1, "int", len(value2), prg)
 
 class Label(Instruction):
     def __init__(self, dict_args):
         super().__init__("LABEL", 1, dict_args)
-
-    def check_args(self):
-        num = super().get_num_of_arg()
 
     def execute(self, prg):
         pass
@@ -500,16 +507,15 @@ class Type(Instruction):
     def __init__(self, dict_args):
         super().__init__("TYPE", 2, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
         check_declare_var(name1, typ1, value1)
         frame2, name2, typ2, value2 = get_values(self, 1)
         check_declare_var(name2, typ2, value2)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, None, None)
+        if value2 == None:
+            exit(NOVALUE_ERR)
+
         typ2 = "" if typ2 == None else typ2
         self._add_var(name1, frame1, "string", typ2, prg)
 
@@ -517,36 +523,39 @@ class Write(Instruction):
     def __init__(self, dict_args):
         super().__init__("WRITE", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         frame, name, typ, value = get_values(self, 0)
         check_declare_var(name, typ, value)
 
-        value = value if "string" != typ else re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), value)
-        print("" if typ == "nil" else value, end='', file=sys.stdout)
+        if value == None:
+            exit(NOVALUE_ERR)
+        else:
+            print("" if typ == "nil" else value, end='', file=sys.stdout)
 
 class Dprint(Instruction):
     def __init__(self, dict_args):
         super().__init__("DPRINT", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
         frame, name, typ, value = get_values(self, 0)
         check_declare_var(name, typ, value)
 
-        value = value if "string" != typ else re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), value)
-        print("" if typ == "nil" else value, end='', file=sys.stderr)
+        if value == None:
+            exit(NOVALUE_ERR)
+        else:
+            print("" if typ == "nil" else value, end='', file=sys.stderr)
 
 class Int2char(Instruction):
     def __init__(self, dict_args):
         super().__init__("INT2CHAR", 2, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int":
+            exit(TYPES_ERR)
+        if 0 > int(value2) or int(value2) > 1114111:
+            exit(STRING_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -554,15 +563,18 @@ class Int2char(Instruction):
         frame2, name2, typ2, value2 = get_values(self, 1)
         check_declare_var(name2, typ2, value2)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, None, None)
+        self.check_semantic(typ1, value1, typ2, value2, None, None)
         self._add_var(name1, frame1, "string", str(chr(int(value2))), prg)
 
 class Jumpifneq(Instruction):
     def __init__(self, dict_args):
         super().__init__("JUMPIFNEQ", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != typ3 and typ2 != "nil" and typ3 != "nil":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
@@ -571,20 +583,22 @@ class Jumpifneq(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, None, None, typ2, value2, typ3, value3)
-        try:
-            if value2 != value3:
+        self.check_semantic(None, None, typ2, value2, typ3, value3)
+        if value in prg._labels_dict:
+            if value2 != value3 :
                 prg.set_line(prg._labels_dict[value] - 1)
-        except:
-            #print("Label doenst exist")
+        else:
             exit(SEMANTIC_ERR)
 
 class Sub(Instruction):
     def __init__(self, dict_args):
         super().__init__("SUB", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ3 != "int":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -594,15 +608,20 @@ class Sub(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "int", str(int(value2) - int(value3)), prg)
 
 class Idiv(Instruction):
     def __init__(self, dict_args):
         super().__init__("IDIV", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ3 != "int":
+            exit(TYPES_ERR)
+        if int(value3) == 0:
+            exit(WRONG_VALUE_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -612,15 +631,20 @@ class Idiv(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "int", str(int(value2) // int(value3)), prg)
 
 class Gt(Instruction):
     def __init__(self, dict_args):
         super().__init__("GT", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 == "nil" or typ3 == "nil":
+            exit(TYPES_ERR)
+        if typ2 != typ3:
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -630,15 +654,25 @@ class Gt(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
-        self._add_var(name1, frame1, "bool", str(value2 > value3).lower(), prg)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
+        if typ2 == "int":
+            self._add_var(name1, frame1, "bool", str(int(value2) > int(value3)).lower(), prg)
+        elif typ2 == "string":
+            self._add_var(name1, frame1, "bool", str(value2 > value3).lower(), prg)
+        elif typ2 == "bool" and value2 == "true" and value3 == "false":
+            self._add_var(name1, frame1, "bool", "true", prg)
+        else:
+            self._add_var(name1, frame1, "bool", "false", prg)
 
 class And(Instruction):
     def __init__(self, dict_args):
         super().__init__("AND", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "bool" or typ3 != "bool":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -648,15 +682,18 @@ class And(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         self._add_var(name1, frame1, "bool", str(str2bool(value2) and str2bool(value3)).lower(), prg)
 
 class Not(Instruction):
     def __init__(self, dict_args):
         super().__init__("NOT", 2, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "bool":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -664,15 +701,20 @@ class Not(Instruction):
         frame2, name2, typ2, value2 = get_values(self, 1)
         check_declare_var(name2, typ2, value2)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, None, None)
+        self.check_semantic(typ1, value1, typ2, value2, None, None)
         self._add_var(name1, frame1, "bool", str(not str2bool(value2)).lower(), prg)
 
 class Getchar(Instruction):
     def __init__(self, dict_args):
         super().__init__("GETCHAR", 3, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, typ1, value1, typ2, value2, typ3, value3):
+        if value2 == None or value3 == None:
+            exit(NOVALUE_ERR)
+        if typ3 != "int" or typ2 != "string":
+            exit(TYPES_ERR)
+        if int(value3) < 0:
+            exit(STRING_ERR)
 
     def execute(self, prg):
         frame1, name1, typ1, value1 = get_values(self, 0)
@@ -682,131 +724,123 @@ class Getchar(Instruction):
         frame3, name3, typ3, value3 = get_values(self, 2)
         check_declare_var(name3, typ3, value3)
 
-        check_args(self._opcode, typ1, value1, typ2, value2, typ3, value3)
+        self.check_semantic(typ1, value1, typ2, value2, typ3, value3)
         try:
             self._add_var(name1, frame1, "string", str(value2[int(value3)]), prg)
         except:
-            #print("Mimo pole")
             exit(STRING_ERR)
 
 class Read(Instruction):
     def __init__(self, dict_args):
         super().__init__("READ", 2, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
-
     def execute(self, prg):
-        line = input() if prg._input_f is None else prg._input_f.readline().rtrim()
-
         (key, value), = self.get_arg(1).items()
         frame1, name1, typ1, value1 = get_values(self, 0)
         check_declare_var(name1, typ1, value1)
 
-        if value == 'int':
-            self._add_var(name1, frame1, "int", str(int(line)), prg)
-        elif value == 'string':
-            self._add_var(name1, frame1, "string", str(line), prg)
-        elif value == 'bool':
-            new_v = "true" if line == "true" else "false"
-            self._add_var(name1, frame1, "bool", new_v, prg)
-        if value == '':
+        try:
+            line = input() if prg._input_f == None else prg._input_f.readline()
+            line = line.rstrip()
+
+            if value == 'int':
+                try:
+                    self._add_var(name1, frame1, "int", str(int(line)), prg)
+                except:
+                    self._add_var(name1, frame1, "nil", "nil", prg)
+            elif value == 'string':
+                self._add_var(name1, frame1, "string", str(line), prg)
+            elif value == 'bool':
+                new_v = "true" if line.upper() == "TRUE" else "false"
+                self._add_var(name1, frame1, "bool", new_v, prg)
+        except EOFError:
             self._add_var(name1, frame1, "nil", "nil", prg)
 
 class AddS(Instruction):
     def __init__(self, dict_args):
         super().__init__("ADDS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ1 != "int":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 or type_stack1 != "int":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
         prg._data_stack.append((type_stack1, int(value_stack1) + int(value_stack2)))
 
 class SubS(Instruction):
     def __init__(self, dict_args):
         super().__init__("SUBS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ1 != "int":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 or type_stack1 != "int":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
         prg._data_stack.append((type_stack1, int(value_stack2) - int(value_stack1)))
 
 class MulS(Instruction):
     def __init__(self, dict_args):
         super().__init__("MULS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ1 != "int":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 or type_stack1 != "int":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
         prg._data_stack.append((type_stack1, int(value_stack1) * int(value_stack2)))
 
 class IdivS(Instruction):
     def __init__(self, dict_args):
         super().__init__("IDIVS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "int" or typ1 != "int":
+            exit(TYPES_ERR)
+        if int(value2) == 0:
+            exit(WRONG_VALUE_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 or type_stack1 != "int":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
-        if int(value_stack2) == 0:
-            #print("Psel nahuy")
-            exit(WRONG_VALUE_ERR)
-
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
         prg._data_stack.append((type_stack1, int(value_stack2) // int(value_stack1)))
 
 class ClearS(Instruction):
     def __init__(self, dict_args):
         super().__init__("CLEARS", 0, dict_args)
-
-    def check_args(self):
-        num = super().get_num_of_arg()
 
     def execute(self, prg):
         prg._data_stack = []
@@ -815,217 +849,225 @@ class JumpifeqS(Instruction):
     def __init__(self, dict_args):
         super().__init__("JUMPIFEQS", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value1 == None or value2 == None:
+            exit(NOVALUE_ERR)
+        if typ1 != typ2 and typ2 != "nil" and typ1 != "nil":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 and type_stack1 != "nil" and type_stack2 != "nil":
-            #print("TYPES_ERR")
-            exit(TYPES_ERR)
-
-        try:
-            if value_stack1 == value_stack2:
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
+        if value in prg._labels_dict:
+            if value_stack1 == value_stack2 :
                 prg.set_line(prg._labels_dict[value] - 1)
-        except:
-            #print("Label doenst exist")
+        else:
             exit(SEMANTIC_ERR)
 
 class JumpifneqS(Instruction):
     def __init__(self, dict_args):
         super().__init__("JUMPIFNEQS", 1, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value1 == None or value2 == None:
+            exit(NOVALUE_ERR)
+        if typ1 != typ2 and typ2 != "nil" and typ1 != "nil":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         (key, value), = self.get_arg(0).items()
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 and type_stack1 != "nil" and type_stack2 != "nil":
-            #print("TYPES_ERR")
-            exit(TYPES_ERR)
-
-        try:
-            if value_stack1 != value_stack2:
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
+        if value in prg._labels_dict:
+            if value_stack1 != value_stack2 :
                 prg.set_line(prg._labels_dict[value] - 1)
-        except:
-            #print("Label doenst exist")
+        else:
             exit(SEMANTIC_ERR)
 
 class NotS(Instruction):
     def __init__(self, dict_args):
         super().__init__("NOTS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1):
+        if value1 == None:
+            exit(NOVALUE_ERR)
+        if typ1 == "nil":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 1:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
 
-        if type_stack1 != "bool":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
+        self.check_semantic(value_stack1, type_stack1)
         prg._data_stack.append(("bool", str(not str2bool(value_stack1)).lower()))
 
 class AndS(Instruction):
     def __init__(self, dict_args):
         super().__init__("ANDS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "bool" or typ1 != "bool":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 or type_stack1 != "bool":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
         prg._data_stack.append(("bool", str(str2bool(value_stack1) and str2bool(value_stack2)).lower()))
 
 class OrS(Instruction):
     def __init__(self, dict_args):
         super().__init__("ORS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != "bool" or typ1 != "bool":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 or type_stack1 != "bool":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
         prg._data_stack.append(("bool", str(str2bool(value_stack1) or str2bool(value_stack2)).lower()))
 
 class EqS(Instruction):
     def __init__(self, dict_args):
         super().__init__("EQS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 != typ1 and typ2 != "nil" and typ1 != "nil":
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2 and type_stack1 != "nil" and type_stack2 != "nil":
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
         prg._data_stack.append(("bool", str(value_stack1 == value_stack2).lower()))
 
 class LtS(Instruction):
     def __init__(self, dict_args):
         super().__init__("LTS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 == "nil" or typ1 == "nil":
+            exit(TYPES_ERR)
+        if typ2 != typ1:
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2:
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
-        prg._data_stack.append(("bool", str(value_stack2 < value_stack1).lower()))
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
+        if type_stack2 == "int":
+            prg._data_stack.append(("bool", str(int(value_stack2) < int(value_stack1)).lower()))
+        elif type_stack2 == "string":
+            prg._data_stack.append(("bool", str(value_stack2 < value_stack1).lower()))
+        elif type_stack2 == "bool" and value_stack2 == "false" and value_stack1 == "true":
+            prg._data_stack.append(("bool", "true"))
+        else:
+            prg._data_stack.append(("bool", "false"))
 
 class GtS(Instruction):
     def __init__(self, dict_args):
         super().__init__("GTS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ2 == "nil" or typ1 == "nil":
+            exit(TYPES_ERR)
+        if typ2 != typ1:
+            exit(TYPES_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != type_stack2:
-            #print("SEM_ERR pop")
-            exit(TYPES_ERR)
-
-        prg._data_stack.append(("bool", str(value_stack2 > value_stack1).lower()))
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
+        if type_stack2 == "int":
+            prg._data_stack.append(("bool", str(int(value_stack2) > int(value_stack1)).lower()))
+        elif type_stack2 == "string":
+            prg._data_stack.append(("bool", str(value_stack2 > value_stack1).lower()))
+        elif type_stack2 == "bool" and value_stack1 == "false" and value_stack2 == "true":
+            prg._data_stack.append(("bool", "true"))
+        else:
+            prg._data_stack.append(("bool", "false"))
 
 class Int2charS(Instruction):
     def __init__(self, dict_args):
         super().__init__("INT2CHARS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value1 == None:
+            exit(NOVALUE_ERR)
+        if typ1 != "int":
+            exit(TYPES_ERR)
+        if 0 > int(value1) or int(value1) > 1114111:
+            exit(STRING_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 1:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
 
-        if type_stack1 != "int":
-            exit(TYPES_ERR)
-
-        if 0 <= int(value_stack1) <= 1114111:
-            prg._data_stack.append(("string", str(chr(int(value_stack1)))))
-        else:
-            #print("Nejaka chybaaaa")
-            exit(STRING_ERR)
+        self.check_semantic(value_stack1, type_stack1, None, None)
+        prg._data_stack.append(("string", str(chr(int(value_stack1)))))
 
 class Stri2intS(Instruction):
     def __init__(self, dict_args):
         super().__init__("STRI2INTS", 0, dict_args)
 
-    def check_args(self):
-        num = super().get_num_of_arg()
+    def check_semantic(self, value1, typ1, value2, typ2):
+        if value2 == None or value1 == None:
+            exit(NOVALUE_ERR)
+        if typ1 != "int" or typ2 != "string":
+            exit(TYPES_ERR)
+        if int(value1) < 0 or int(value1) + 1 > len(value2):
+            exit(STRING_ERR)
 
     def execute(self, prg):
         if len(prg._data_stack) < 2:
-            #print("ERORO POP")
             exit(NOVALUE_ERR)
 
         type_stack1, value_stack1 = prg._data_stack.pop()
         type_stack2, value_stack2 = prg._data_stack.pop()
 
-        if type_stack1 != "int" or type_stack2 != "string":
-            exit(TYPES_ERR)
-        try:
-            prg._data_stack.append(("int", str(ord(value_stack2[int(value_stack1)]))))
-        except:
-            exit(STRING_ERR)
+        self.check_semantic(value_stack1, type_stack1, value_stack2, type_stack2)
+        prg._data_stack.append(("int", str(ord(value_stack2[int(value_stack1)]))))
 
 class Factory:
     _dict_func = {"DEFVAR"  : Defvar , "CREATEFRAME" : Createframe, "POPFRAME" : Popframe,
@@ -1053,104 +1095,12 @@ class Factory:
             return cls._dict_func[string](dict_args)
         except:
             exit(STRUCT_ERR)
-            #print("ERROR with name of instruction, add exit error")
-
-def check_args(opcode, typ1, value1, typ2, value2, typ3, value3):
-    if opcode in ("ADD", "SUB", "MUL", "ADDS", "SUBS", "MULS"):
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "int" or typ3 != "int":
-            exit(TYPES_ERR)
-    elif opcode in ("IDIV", "IDIVS"):
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "int" or typ3 != "int":
-            exit(TYPES_ERR)
-        if int(value3) == 0:
-            exit(WRONG_VALUE_ERR)
-    elif opcode == "MOVE":
-        if value2 == None:
-            exit(NOVALUE_ERR)
-    elif opcode in ("JUMPIFEQ", "JUMPIFNEQ"):
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != typ3 and typ2 != "nil" and typ3 != "nil":
-            exit(TYPES_ERR)
-    elif opcode in ("LT", "GT"):
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 == "nil" or typ3 == "nil":
-            exit(TYPES_ERR)
-        if typ2 != typ3:
-            exit(TYPES_ERR)
-    elif opcode == "EQ":
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != typ3 and typ2 != "nil" and typ3 != "nil":
-            exit(TYPES_ERR)
-    elif opcode in ("AND", "OR"):
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "bool" or typ3 != "bool":
-            exit(TYPES_ERR)
-    elif opcode == "NOT":
-        if value2 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "bool":
-            exit(TYPES_ERR)
-    elif opcode == "CONCAT":
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "string" or typ3 != "string":
-            exit(TYPES_ERR)
-    elif opcode == "SETCHAR":
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "int" or typ3 != "string":
-            exit(TYPES_ERR)
-        if int(value2) < 0:
-            exit(WRONG_VALUE_ERR)
-    elif opcode == "STRI2INT":
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ3 != "int" or typ2 != "string":
-            exit(TYPES_ERR)
-    elif opcode == "STRLEN":
-        if value2 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "string":
-            exit(TYPES_ERR)
-    elif opcode == "INT2CHAR":
-        if value2 == None:
-            exit(NOVALUE_ERR)
-        if typ2 != "int":
-            exit(TYPES_ERR)
-        if 0 > int(value2) > 1114111:
-            exit(STRING_ERR)
-    elif opcode == "GETCHAR":
-        if value2 == None or value3 == None:
-            exit(NOVALUE_ERR)
-        if typ3 != "int" or typ2 != "string":
-            exit(TYPES_ERR)
-        if int(value1) < 0:
-            exit(STRING_ERR)
-    elif opcode == "TYPE":
-        if value2 == None:
-            exit(NOVALUE_ERR)
-    elif opcode == "EXIT":
-        if value1 == None:
-            exit(NOVALUE_ERR)
-        if typ1 != "int":
-            exit(TYPES_ERR)
-        if int(value1) > 49 or int(value1) < 0:
-            exit(WRONG_VALUE_ERR)
 
 def str2bool(val):
     return True if val == "true" else False;
 
 def check_declare_var(name, typ, value):
     if name == None and typ == None and typ == None:
-        #print("Where is name")
         exit(UNDECLARE_ERR)
 
 def get_values(instr, id):
@@ -1163,19 +1113,16 @@ def get_values(instr, id):
 def check_type(key1, key2, key3, typ):
     if ((key1 != typ and key1 != None ) or
     key2 != typ or key3 != typ):
-        #print("Se")
         exit(TYPES_ERR)
 
 def check_2_keys(key1, typ1, key2, typ2):
     if ((key1 != typ1 and key1 != None) or
     key2 != typ2):
-        #print("SEm errrr")
         exit(TYPES_ERR)
 
 def check_label(prg, opcode, dict):
     if opcode.upper() == "LABEL":
         if dict["label"] in prg._labels_dict:
-            #print("JOPAAAAAAA")
             exit(SEMANTIC_ERR)
 
         prg._labels_dict[dict["label"]] = prg.get_num_of_instrs()
@@ -1183,7 +1130,6 @@ def check_label(prg, opcode, dict):
 def check_order(prg, order, curr_instr):
     try:
         if int(order) < 1:
-            #print("ER UUUUU")
             exit(STRUCT_ERR)
     except ValueError:
         exit(STRUCT_ERR)
@@ -1198,15 +1144,11 @@ def inc_insts(prg, opcode):
         prg._stats._insts += 1
 
 # MAIN
-
 prg = Program()
 cmds = ['help', 'source=', 'input=', 'insts', 'hot', 'vars']
 tree = None
 try:
-    # Define the getopt parameters
     opts, args = getopt.getopt(sys.argv[1:], '', cmds)
-    # Check if the options' length is 2 (can be enhanced
-      # Iterate the options and get the corresponding values
     for opt, arg in opts:
         if opt in ('--help'):
             if len(sys.argv) != 2:
@@ -1231,26 +1173,11 @@ try:
             try:
                 prg._input_f = open(arg, "r")
             except:
-                #print("Nowm file zdaj")
                 exit(PARAM_ERR)
         else:
-            #print("ERR with argggggg")
             exit(PARAM_ERR)
 except getopt.GetoptError:
-    # Print something useful
     print ('usage: add.py -a <first_operand> -b <second_operand>')
-    exit(2)
-        #elif opt in ('--stats'):
-        #    if stIsPresent > 0:
-        #        self.stats.statsGroups[statsFile] = tmpList
-        #    else:
-        #        stIsPresent = 1
-        #    tmpList = list()
-        #    statsFile = arg
-        #elif opt in ('--insts', '--hot', '--vars') and stIsPresent > 0:
-        #    tmpList.append(opt[2:])
-        #else:
-        #    exit(ERR_PARAM)
 
 if prg._input_f == None and tree == None:
     exit(PARAM_ERR)
@@ -1265,8 +1192,6 @@ if (not re.match('^IPPcode21$', root.attrib['language']) or
     exit(STRUCT_ERR)
 
 for child in root:
-    #print(type(child.attrib["order"]))
-    #print(child.attrib["order"])
     dict_args = dict()
     if (child.tag != "instruction" or "opcode" not in child.attrib or
         "order" not in child.attrib or len(child.attrib) != 2):
@@ -1280,7 +1205,11 @@ for child in root:
         if ch.tag != "arg" + str(idx+1) or idx > 2:
             exit(STRUCT_ERR)
 
-        dict_args[idx] = {ch.attrib["type"] : ch.text}
+        new_text = ch.text
+        if ch.text != None and "string" == ch.attrib["type"]:
+            new_text = re.sub(r'\\([0-9]{3})', lambda x: chr(int(x[1])), ch.text)
+
+        dict_args[idx] = {ch.attrib["type"] : new_text}
         idx += 1
 
     instr = Factory.resolve(child.attrib["opcode"].upper(), dict_args)
@@ -1294,5 +1223,4 @@ for child in root:
 while prg.get_line() < prg.get_num_of_instrs():
     Instruction.get_instr_list()[prg.get_line()].execute(prg)
     inc_insts(prg, Instruction.get_instr_list()[prg.get_line()]._opcode)
-    #print(prg.get_line())
     prg.set_line(prg.get_line() + 1)
