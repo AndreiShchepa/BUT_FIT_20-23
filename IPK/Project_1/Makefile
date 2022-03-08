@@ -1,2 +1,2 @@
-all: hinfosvc.c
-	gcc -o hinfosvc hinfosvc.c
+all: hinfosvc.cpp
+	g++ -o hinfosvc hinfosvc.cpp

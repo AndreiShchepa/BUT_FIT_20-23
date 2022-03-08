@@ -50,9 +50,9 @@ void fill_str(std::string &str, FILE *in) {
     while ((c = fgetc(in)) != EOF) {
         str += c;
     }
-    str += '\0';
 }
 
+// Function for tokenizing string with info about cpu load
 void tokenize(std::string const &str, const char* delim,
             std::vector<std::string> &out)
 {
@@ -131,6 +131,10 @@ bool calc_load_cpu(std::string &loadcpu) {
     return true;
 }
 
+/*
+ * @brief Call system commands and save output.
+ * @return On success true, otherwise false
+ */
 bool get_info(std::string &hostname, std::string &cpuinfo) {
     FILE* in;
 
@@ -168,32 +172,16 @@ bool check_port(int argc, char const *argv[], int *port) {
     return true;
 }
 
-/*
- * @brief Check type of request
- */
+// Check type of request
 void msg(char* request, type_of_req_t *type) {
-    char* token;
-    token = strtok(request, " ");
-
-    if (strcmp("GET", token) != 0) {
-        *type = ERR;
-        return;
-    }
-
-    token = strtok(NULL, " ");
-
-    if (!strcmp("/hostname", token)) {
+    if (!strncmp("GET /hostname ", request, strlen("GET /hostname ")))
         *type = HOST_NAME;
-    }
-    else if (!strcmp("/cpu-name", token)) {
+    else if (!strncmp("GET /cpu-name ", request, strlen("GET /cpu-name ")))
         *type = CPU_INFO;
-    }
-    else if (!strcmp("/load", token)) {
+    else if (!strncmp("GET /load ", request, strlen("GET /load ")))
         *type = LOAD_CPU;
-    }
-    else {
+    else
         *type = ERR;
-    }
 }
 
 int main(int argc, char const *argv[]) {
@@ -215,6 +203,12 @@ int main(int argc, char const *argv[]) {
     // IPPROTO - TCP protocol
     if ((server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == 0) {
         perror("ERROR: creating socket");
+        exit(EXIT_FAILURE);
+    }
+
+    const int opt = 1;
+    if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
+        perror("ERROR: set socket options");
         exit(EXIT_FAILURE);
     }
 
@@ -268,12 +262,9 @@ int main(int argc, char const *argv[]) {
                 resp = RIGHT_REQUEST + cpuinfo;
                 break;
             case LOAD_CPU:
-                resp = RIGHT_REQUEST;
                 ret = calc_load_cpu(loadcpu);
-                if (ret == false)
-                    return -1;
-
-                resp += loadcpu;
+                CHECK_ERR(ret == false, -1);
+                resp = RIGHT_REQUEST + loadcpu;
                 break;
             default:
                 resp = WRONG_REQUEST;
