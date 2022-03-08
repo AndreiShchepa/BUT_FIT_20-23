@@ -10,7 +10,10 @@ function printHelp() {
 		    "\t--loc prints number of lines with instructions to statistics.\n".
 		    "\t--comments prints number of lines with comments to statistics.\n".
 		    "\t--labels prints number of labels in code to statistics.\n".
-		    "\t--jumps prints number of jumps in code to statistics.\n";
+		    "\t--jumps prints number of jumps in code to statistics.\n".
+		    "\t--fwjumps prints number of jumps to forward in code to statistics.\n"
+		    "\t--backjumps prints number of jumps to back in code to statistics.\n"
+		    "\t--badjumps prints number of jumps on non-exist labels in code to statistics.\n";
     exit(0);
 }
 
