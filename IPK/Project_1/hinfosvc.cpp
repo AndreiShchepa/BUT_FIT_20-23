@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <cmath>
 
 #define SIZE_CPU_ARR 10
 #define CMD_LOADCPU  "cat /proc/stat | grep \"\\<cpu\\>\""
@@ -82,8 +83,9 @@ bool get_values(long long *arr) {
     tokenize(tmp, " ", out);
 
     int i = 0;
+    char *end;
     for (std::string &s: out) {
-        arr[i++] = strtol(s.c_str(), (char **)NULL, 10);
+        arr[i++] = strtol(s.c_str(), &end, 10);
     }
 
     fclose(in);
@@ -127,7 +129,7 @@ bool calc_load_cpu(std::string &loadcpu) {
     idled = Idle - PrevIdle;
     load = (totald - idled)/(float)totald * 100;
 
-    loadcpu = std::to_string(load) + "%\n\0";
+    loadcpu = std::to_string((int)(round(load))) + "%\n\0";
     return true;
 }
 
