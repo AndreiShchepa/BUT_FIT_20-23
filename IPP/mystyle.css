@@ -1,0 +1,126 @@
+		*, html, body {
+			overflow-x: hidden;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			outline: none;
+		}
+
+		body, html {
+			width: 100%;
+			height: 100%;
+		}
+
+		body {
+			margin: 0;
+			padding: 0;
+			font-family: Sans-serif;
+			line-height: 1.5em;
+		}
+
+		header {
+			width: 100%;
+			background: transparent;
+		}
+
+		#center {
+			text-align: center;
+			padding: 10px 0px;
+		}
+
+		#header {
+			font-size: large;
+			padding: 1.5em;
+			background: #BCCE98;
+		}
+
+		.sum_cont {
+			display: flex;
+			justify-content: center ;
+			padding-top: 30px;
+			width: : 100%;
+		}
+
+		.sum_item_left {
+			width: 200px;
+			max-width: 210px;
+			height: 210px;
+		}
+
+		.sum_item_right {
+			width: 210px;
+			max-width: 210px;
+			padding-top: 35px;
+			padding-left: 35px;
+			height: 210px;
+		}
+
+		div {
+			display: block;
+		}
+
+		.circular-chart {
+			max-height: 200px;
+		}
+
+		.circular-chart-small {
+			max-height: 100px;
+		}
+
+		.circle-bg {
+			fill: none;
+			stroke: #eee;
+			stroke-width: 3.8;
+		}
+
+		.circle {
+			fill: none;
+			stroke-width: 2.8;
+			stroke-linecap: round;
+			animation: progress 1s ease-out forwards;
+		}
+
+		@keyframes progress {
+			0% {
+				stroke-dasharray: 0 100;
+			}
+		}
+
+		.circular-chart.yellow .circle {
+		stroke: #FFE564;
+		}
+
+		.circular-chart.green .circle {
+		stroke: #5ECD5E;
+		}
+
+		.circular-chart.red .circle {
+		stroke: #DE5959;
+		}
+
+		.percentage {
+			fill: #666;
+			font-family: sans-serif;
+			font-size: 0.5em;
+			text-anchor: middle;
+		}
+
+		.config_td {
+			padding: 10px;
+		    display: table-cell;
+		    vertical-align: inherit;
+		}
+
+		.config_td.text {
+			text-align: center;
+		}
+
+		.config_td.good {
+			color: #079207;
+		}
+
+		.config_td.bad {
+			color: #C61010;
+		}
